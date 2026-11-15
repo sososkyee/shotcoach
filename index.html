@@ -90,6 +90,49 @@ small{opacity:.6}
 .sb{display:block;width:100%;text-align:center;font-size:19px;padding:16px;background:none;border-radius:0;color:#0a84ff}
 .sb.red{color:#ff453a}.sb+.sb{border-top:1px solid rgba(255,255,255,.1)}
 .inf{padding:16px 18px 8px;line-height:1.5;font-size:15px}.inf b{font-size:17px}.inf .big{font-size:44px;font-weight:700;line-height:1.1;margin:6px 0}.inf .big small{font-size:18px;opacity:.6}.inf p{margin:8px 0 0;opacity:.8}
+
+/* ---- motion ---- */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes cardIn{from{opacity:0;transform:translateY(26px) scale(.93)}to{opacity:1;transform:none}}
+@keyframes cardOut{to{opacity:0;transform:translateY(18px) scale(.95)}}
+@keyframes slideUp{from{transform:translateY(110%)}to{transform:none}}
+@keyframes slideDown{to{transform:translateY(110%)}}
+@keyframes libIn{from{opacity:0;transform:scale(.2);border-radius:48px}to{opacity:1;transform:none;border-radius:0}}
+@keyframes libOut{to{opacity:0;transform:scale(.2);border-radius:48px}}
+@keyframes cellIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:none}}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+@keyframes popC{from{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.92)}to{opacity:1;transform:translateX(-50%)}}
+@keyframes vIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@keyframes vOut{to{opacity:0;transform:scale(.92)}}
+@keyframes barUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:none}}
+@keyframes heartPop{0%{transform:scale(1)}40%{transform:scale(1.5)}100%{transform:scale(1)}}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
+@keyframes stepIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+.ov.in{animation:fadeIn .25s ease both}.ov.in .card{animation:cardIn .4s cubic-bezier(.2,.9,.25,1) both}
+.ov.out{animation:fadeOut .22s ease both}.ov.out .card{animation:cardOut .22s ease both}
+#sheet.in{animation:fadeIn .25s ease both}#sheet.in #shbox{animation:slideUp .42s cubic-bezier(.2,.9,.25,1) both}
+#sheet.out{animation:fadeOut .24s ease both}#sheet.out #shbox{animation:slideDown .24s ease both}
+#lib.in{animation:libIn .42s cubic-bezier(.2,.85,.25,1) both}
+#lib.out{animation:libOut .3s cubic-bezier(.4,0,.8,.4) both}
+#welcome.out{animation:fadeOut .35s ease both}
+#viewer{background:rgba(0,0,0,0);transition:background .34s ease}#viewer.on{background:#000}
+#viewer.fresh #vs{animation:vIn .4s cubic-bezier(.2,.85,.25,1) both}
+#viewer.closing #vs{animation:vOut .28s ease both}
+.top,.bot{transition:opacity .28s ease,transform .3s cubic-bezier(.2,.9,.25,1)}
+#viewer.hide .top{transform:translateY(-14px)}#viewer.hide .bot{transform:translateY(14px)}
+.fly{position:fixed;z-index:35;object-fit:cover;pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+#lgrid{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 68px);scroll-padding-bottom:40px}
+#lib.sel #lbot{animation:barUp .35s cubic-bezier(.2,.9,.25,1) both}
+.cell.on::after{animation:popIn .25s ease both}
+#vheart.pop svg{animation:heartPop .42s ease}
+#thumb.bump{animation:bump .4s ease}
+#toast{transform:translate(-50%,14px);transition:opacity .3s,transform .4s cubic-bezier(.2,.9,.25,1)}#toast.show{opacity:1;transform:translate(-50%,0)}
+#tipbar{animation:popC .3s ease}#lightpill,#steady,#clip{animation:popIn .3s ease}
+#zr button,.cb,.pb,.cap button,.sb{transition:transform .12s,background .2s,color .2s,opacity .2s}
+.cb:active,.pb:active,.cap button:active{transform:scale(.9)}
+.sb:active{background:rgba(255,255,255,.1)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
 </style></head><body>
 <div id="stage"><video id="v" playsinline muted autoplay></video><div id="tint"></div><canvas id="ov"></canvas>
 <div id="flash"></div><div id="cd"></div>
@@ -160,7 +203,7 @@ if(!standalone)$('tipi').textContent='Tip: Share → Add to Home Screen for full
 
 function vr(){const vw=v.videoWidth,vh=v.videoHeight,A=ov.clientWidth/ov.clientHeight||.75;let sw=vw,sh=vh;
   if(vw/vh>A)sw=vh*A;else sh=vw/A;sw/=zoom;sh/=zoom;return[(vw-sw)/2,(vh-sh)/2,sw,sh]}
-function toast(m,ms=2200){const t=$('toast');t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity=0,ms)}
+function toast(m,ms=2200){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms)}
 function info(m){toast(m,3000)}
 
 let oriOk=false,oriAsked=false,oriHooked=false;
@@ -179,7 +222,7 @@ async function begin(auto){
     await openCam();
     try{localStorage.setItem('sc_cam','1')}catch(e){} // remember that the camera was allowed, so next launch skips the Start screen
     try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){} // ask iOS not to evict saved photos
-    $('welcome').style.display='none';$('steady').style.display='block';started=true;$('pill').textContent='Looking for a great shot…';
+    closeEl($('welcome'),350);$('steady').style.display='block';started=true;$('pill').textContent='Looking for a great shot…';
     requestAnimationFrame(draw);keepAwake();if(!tutSeen())showTut();
   }catch(e){
     b.textContent=old;
@@ -236,14 +279,14 @@ function store(){try{return JSON.parse(localStorage.getItem('sc_cfg2')||'{}')}ca
 function save(o){try{localStorage.setItem('sc_cfg2',JSON.stringify(o))}catch(e){}}
 function active(){const o=store();return o.p&&o.by&&o.by[o.p]&&o.by[o.p].key?Object.assign({p:o.p},o.by[o.p]):null}
 function show(p){const o=store(),t=(o.by&&o.by[p])||{};$('cp').value=p;$('ck').value=t.key||'';$('cm').value=t.model||DEF[p].model;$('cu').value=t.url||DEF[p].url;$('cu').style.display=p==='openai'?'':'none';$('cs').textContent=DEF[p].hint}
-function openCfg(){show(store().p||'gemini');$('cfg').style.display='flex'}
+function openCfg(){show(store().p||'gemini');openEl($('cfg'))}
 function setAI(on){useAI=on;aiBox=null;face='none';lastAi=0;aiGap=5000;$('ai').classList.toggle('on',on);
   info(on?'AI mode: '+PN[active().p]+' picks the subject':'Local mode: works offline')}
 $('cp').onchange=()=>show($('cp').value);
-$('gear').onclick=openCfg;$('ccancel').onclick=()=>$('cfg').style.display='none';
+$('gear').onclick=openCfg;$('ccancel').onclick=()=>closeEl($('cfg'));
 $('csave').onclick=()=>{const p=$('cp').value,o=store();o.p=p;o.by=o.by||{};
   o.by[p]={key:$('ck').value.trim(),model:$('cm').value.trim()||DEF[p].model,url:$('cu').value.trim()||DEF[p].url};
-  save(o);$('cfg').style.display='none';if(o.by[p].key)setAI(true)};
+  save(o);closeEl($('cfg'));if(o.by[p].key)setAI(true)};
 $('ai').onclick=()=>{if(useAI)return setAI(false);if(!active())return openCfg();setAI(true)};
 
 async function callAI(c,b64){
@@ -470,7 +513,7 @@ function idb(){return new Promise(res=>{try{const r=indexedDB.open('shotcoach',1
 function dbPut(rec){return new Promise(res=>{if(!db)return res(rec);try{const q=db.transaction('shots','readwrite').objectStore('shots').add({blob:rec.blob,sc:rec.sc,t:rec.t,fav:!!rec.fav});q.onsuccess=()=>{rec.id=q.result;res(rec)};q.onerror=()=>res(rec)}catch(e){res(rec)}})}
 function dbSet(s){try{if(db&&s.id!=null)db.transaction('shots','readwrite').objectStore('shots').put({id:s.id,blob:s.blob,sc:s.sc,t:s.t,fav:!!s.fav})}catch(e){}}
 function dbDel(id){try{if(db&&id!=null)db.transaction('shots','readwrite').objectStore('shots').delete(id)}catch(e){}}
-function refreshThumb(){if(shots.length){$('thumb').style.backgroundImage='url('+shots[0].url+')';$('cnt').style.display='block';$('cnt').textContent=shots.length}
+function refreshThumb(){const th=$('thumb');th.classList.remove('bump');void th.offsetWidth;th.classList.add('bump');if(shots.length){$('thumb').style.backgroundImage='url('+shots[0].url+')';$('cnt').style.display='block';$('cnt').textContent=shots.length}
   else{$('thumb').style.backgroundImage='none';$('cnt').style.display='none'}}
 async function loadShots(){db=await idb();if(!db)return;
   try{const all=await new Promise(res=>{const q=db.transaction('shots').objectStore('shots').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])});
@@ -508,37 +551,50 @@ const IC={back:'<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
 document.querySelectorAll('[data-ic]').forEach(e=>e.innerHTML=IC[e.dataset.ic]);
 let selMode=false,selSet=new Set(),vi=0,vList=[];
 const order=()=>shots.slice().reverse(); // oldest first, newest at the bottom, like Photos
-const vis=id=>$(id).style.display==='flex';
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches,EASE='cubic-bezier(.2,.85,.25,1)';
+const vis=id=>{const e=$(id);return e.style.display==='flex'&&!e._closing};
+function openEl(el,disp){clearTimeout(el._t);el._closing=false;el.classList.remove('out','in');el.style.display=disp||'flex';void el.offsetWidth;el.classList.add('in')}
+function closeEl(el,ms,cb){if(el._closing||getComputedStyle(el).display==='none')return;el._closing=true;el.classList.add('out');
+  el._t=setTimeout(()=>{el.style.display='none';el.classList.remove('out','in');el._closing=false;cb&&cb()},ms||260)}
+function fitRect(nw,nh){const W=innerWidth,H=innerHeight,k=Math.min(W/nw,H/nh);return{x:(W-nw*k)/2,y:(H-nh*k)/2,w:nw*k,h:nh*k}}
+function flyImg(src,a,b,done){ // a photo that glides between its grid square and its full-screen spot
+  const f=document.createElement('img');f.src=src;f.className='fly';
+  const put=r=>{f.style.left=r.x+'px';f.style.top=r.y+'px';f.style.width=r.w+'px';f.style.height=r.h+'px'};
+  put(a);document.body.appendChild(f);void f.offsetWidth;
+  f.style.transition=['left','top','width','height'].map(k=>k+' .44s '+EASE).join(',');
+  requestAnimationFrame(()=>put(b));
+  setTimeout(()=>{done&&done();requestAnimationFrame(()=>f.remove())},470)}
 function dayLbl(t){const d=new Date(t),n=new Date(),z=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()),df=Math.round((z(n)-z(d))/864e5);
   return df===0?'Today':df===1?'Yesterday':df<7?d.toLocaleDateString([],{weekday:'long'}):d.toLocaleDateString([],{day:'numeric',month:'short',year:'numeric'})}
 const timeLbl=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 function sheet(items){const b=$('shbox');b.innerHTML='';
   items.forEach(it=>{const x=document.createElement('button');x.className='sb'+(it.red?' red':'');x.textContent=it.t;x.onclick=()=>{closeSheet();it.fn&&it.fn()};b.appendChild(x)});
-  const c=document.createElement('button');c.className='sb';c.style.fontWeight='600';c.textContent='Cancel';c.onclick=closeSheet;b.appendChild(c);$('sheet').style.display='flex'}
-function closeSheet(){$('sheet').style.display='none'}
+  const c=document.createElement('button');c.className='sb';c.style.fontWeight='600';c.textContent='Cancel';c.onclick=closeSheet;b.appendChild(c);openEl($('sheet'))}
+function closeSheet(){closeEl($('sheet'),240)}
 $('sheet').onclick=e=>{if(e.target===$('sheet'))closeSheet()};
 function showInfo(s){const b=$('shbox'),sc=s.sc,d=document.createElement('div');d.className='inf';b.innerHTML='';
   d.innerHTML='<b>'+dayLbl(s.t)+' · '+timeLbl(s.t)+'</b>'+(sc?'<div class="big">'+Math.round(sc.total)+'<small>/10</small></div>Sharp '+Math.round(sc.sharp)+' · Exposure '+Math.round(sc.expo)+' · Framing '+Math.round(sc.fram)+(sc.burst?' · best of 5':'')+'<p>'+(sc.blurry?'⚠️ Looks blurry. ':'')+sc.tip+'</p>':'<p>No coaching score for this photo.</p>');
   b.appendChild(d);
   const x=document.createElement('button');x.className='sb';x.style.fontWeight='600';x.textContent=(sc&&sc.blurry)?'Keep':'Done';x.onclick=closeSheet;b.appendChild(x);
-  if(sc&&sc.blurry){const r=document.createElement('button');r.className='sb red';r.textContent='Delete & Retake';r.onclick=()=>{closeSheet();del([s]);closeViewer()};b.appendChild(r)}
-  $('sheet').style.display='flex'}
+  if(sc&&sc.blurry){const r=document.createElement('button');r.className='sb red';r.textContent='Delete & Retake';r.onclick=()=>{closeSheet();del([s]);closeViewer(true)};b.appendChild(r)}
+  openEl($('sheet'))}
 function del(list){list.forEach(s=>{const i=shots.indexOf(s);if(i<0)return;shots.splice(i,1);URL.revokeObjectURL(s.url);dbDel(s.id)});
   refreshThumb();selSet.clear();
-  if(vis('viewer')){if(!shots.length)closeViewer();else openViewer(Math.min(vi,shots.length-1))}
+  if(vis('viewer')){if(!shots.length)closeViewer(true);else openViewer(Math.min(vi,shots.length-1))}
   if(vis('lib')){selMode=selMode&&shots.length>0;renderLib()}}
 const askDel=list=>sheet([{t:list.length>1?'Delete '+list.length+' Photos':'Delete Photo',red:1,fn:()=>del(list)}]);
-function openLib(){selMode=false;selSet.clear();renderLib();$('lib').style.display='flex';const g=$('lgrid');g.scrollTop=g.scrollHeight}
-function closeLib(){$('lib').style.display='none';selMode=false}
+function thumbOrigin(){const t=$('thumb').getBoundingClientRect();$('lib').style.transformOrigin=(t.left+t.width/2)+'px '+(t.top+t.height/2)+'px'}
+function openLib(){selMode=false;selSet.clear();renderLib(true);thumbOrigin();openEl($('lib'));const g=$('lgrid');g.scrollTop=g.scrollHeight}
+function closeLib(){selMode=false;thumbOrigin();closeEl($('lib'),300)}
 function updateSel(){const n=selSet.size;$('lsub').textContent=selMode?(n?n+' Selected':'Select Items'):shots.length+(shots.length===1?' Photo':' Photos');
   $('lshare').disabled=$('ltrash').disabled=!n}
-function renderLib(){const g=$('lgrid'),L=order();g.innerHTML='';$('lib').classList.toggle('sel',selMode);
+function renderLib(anim){const g=$('lgrid'),L=order();g.innerHTML='';$('lib').classList.toggle('sel',selMode);
   $('lempty').style.display=L.length?'none':'flex';$('lsel').style.visibility=L.length?'visible':'hidden';$('lsel').textContent=selMode?'Cancel':'Select';
-  L.forEach((s,i)=>{const c=document.createElement('div');c.className='cell'+(selSet.has(s)?' on':'');
+  L.forEach((s,i)=>{const c=document.createElement('div');c.className='cell'+(selSet.has(s)?' on':'');if(anim&&!reduce){c.style.animation='cellIn .45s '+EASE+' both';c.style.animationDelay=Math.min((L.length-1-i)*16,360)+'ms'}
     const im=new Image();im.src=s.url;im.decoding='async';c.appendChild(im);
     if(s.fav){const f=document.createElement('span');f.className='fv';f.innerHTML=IC.heartf;c.appendChild(f)}
     const k=document.createElement('span');k.className='ck';c.appendChild(k);
-    c.onclick=()=>{if(selMode){selSet.has(s)?selSet.delete(s):selSet.add(s);c.classList.toggle('on');updateSel()}else openViewer(i)};
+    c.onclick=()=>{if(selMode){selSet.has(s)?selSet.delete(s):selSet.add(s);c.classList.toggle('on');updateSel()}else openViewer(i,c)};
     g.appendChild(c)});
   updateSel()}
 $('lsel').onclick=()=>{selMode=!selMode;selSet.clear();const st=$('lgrid').scrollTop;renderLib();$('lgrid').scrollTop=st};
@@ -547,15 +603,37 @@ $('lshare').onclick=()=>{if(selSet.size)shareMany([...selSet])};
 $('ltrash').onclick=()=>{if(selSet.size)askDel([...selSet])};
 const curShot=()=>vList[vi];
 function vSync(){const s=curShot();if(!s)return;$('vday').textContent=dayLbl(s.t);$('vtime').textContent=timeLbl(s.t);$('vheart').classList.toggle('on',!!s.fav)}
-function openViewer(i){vList=order();const box=$('vs');box.innerHTML='';
+function openViewer(i,cell){
+  const V=$('viewer'),box=$('vs'),was=vis('viewer');vList=order();box.innerHTML='';
   vList.forEach(s=>{const d=document.createElement('div');d.className='sl';const im=new Image();im.src=s.url;d.appendChild(im);box.appendChild(d)});
-  $('viewer').classList.remove('hide');$('viewer').style.display='flex';vi=i;box.scrollLeft=i*box.clientWidth;vSync()}
-function closeViewer(){$('viewer').style.display='none';if(vis('lib')){const st=$('lgrid').scrollTop;renderLib();$('lgrid').scrollTop=st}}
+  clearTimeout(V._t);V._closing=false;V.classList.remove('closing');box.style.opacity='';
+  V.style.display='flex';vi=i;box.scrollLeft=i*box.clientWidth;vSync();
+  if(was){V.classList.add('on');V.classList.remove('hide');return}
+  const im=cell&&cell.querySelector('img');
+  if(im&&im.naturalWidth&&!reduce){ // the tapped square grows into the full photo
+    const r=cell.getBoundingClientRect();
+    V.classList.remove('fresh');V.classList.add('hide');box.style.opacity=0;cell.style.visibility='hidden';
+    void V.offsetWidth;V.classList.add('on');
+    flyImg(im.currentSrc||im.src,{x:r.left,y:r.top,w:r.width,h:r.height},fitRect(im.naturalWidth,im.naturalHeight),()=>{box.style.opacity='';cell.style.visibility='';V.classList.remove('hide')});
+  }else{V.classList.remove('hide');V.classList.add('fresh');void V.offsetWidth;V.classList.add('on')}
+}
+function closeViewer(plain){
+  const V=$('viewer');if(!vis('viewer'))return;V._closing=true;
+  const fin=()=>{V.style.display='none';V.classList.remove('on','fresh','hide','closing');V._closing=false;$('vs').style.opacity='';
+    if(vis('lib')){const g=$('lgrid'),st=g.scrollTop;renderLib();g.scrollTop=st}};
+  const cell=vis('lib')?$('lgrid').children[vi]:null,sl=$('vs').children[vi],im=sl&&sl.querySelector('img');
+  if(cell&&im&&im.naturalWidth&&!plain&&!reduce){ // shrink back into its grid square
+    cell.scrollIntoView({block:'nearest'});cell.style.visibility='hidden';
+    V.classList.add('hide');V.classList.remove('on');$('vs').style.opacity=0;
+    const r=cell.getBoundingClientRect();
+    flyImg(im.currentSrc||im.src,fitRect(im.naturalWidth,im.naturalHeight),{x:r.left,y:r.top,w:r.width,h:r.height},fin);
+  }else{V.classList.add('hide','closing');V.classList.remove('on');V._t=setTimeout(fin,290)}
+}
 $('vs').addEventListener('scroll',()=>{const b=$('vs'),n=Math.round(b.scrollLeft/(b.clientWidth||1));if(n!==vi&&n>=0&&n<vList.length){vi=n;vSync()}},{passive:true});
 $('vs').onclick=()=>$('viewer').classList.toggle('hide');
-$('vback').onclick=closeViewer;
+$('vback').onclick=()=>closeViewer();
 $('vlib').onclick=()=>{closeViewer();if(!vis('lib'))openLib()};
-$('vheart').onclick=()=>{const s=curShot();if(!s)return;s.fav=!s.fav;dbSet(s);vSync()};
+$('vheart').onclick=()=>{const s=curShot();if(!s)return;s.fav=!s.fav;dbSet(s);vSync();if(s.fav){const h=$('vheart');h.classList.remove('pop');void h.offsetWidth;h.classList.add('pop')}};
 $('vshare').onclick=()=>{const s=curShot();if(s)shareOne(s)};
 $('vtrash').onclick=()=>{const s=curShot();if(s)askDel([s])};
 $('vinfo').onclick=()=>{const s=curShot();if(s)showInfo(s)};
@@ -625,8 +703,8 @@ function loadSun(){const b=$('sunbody');
   b.textContent='Finding your location…';
   navigator.geolocation.getCurrentPosition(p=>{coords=[p.coords.latitude,p.coords.longitude];b.innerHTML=renderSun(coords[0],coords[1])},
     ()=>{b.textContent='Location is blocked. In Safari tap aA → Website Settings → Location → Allow, then reopen this.'},{timeout:10000,maximumAge:600000})}
-$('sunb').onclick=()=>{$('sunp').style.display='flex';loadSun()};
-$('sunclose').onclick=()=>$('sunp').style.display='none';
+$('sunb').onclick=()=>{openEl($('sunp'));loadSun()};
+$('sunclose').onclick=()=>closeEl($('sunp'));
 $('sunref').onclick=()=>{coords=null;loadSun()};
 /* ---- first-run tutorial ---- */
 const TUT=[['🎯','Follow the arrow','Move your phone until the circle sits on the target. Yellow means keep adjusting, green means you nailed it.'],
@@ -634,13 +712,13 @@ const TUT=[['🎯','Follow the arrow','Move your phone until the circle sits on 
  ['🎛️','Make it yours','✨ lets AI pick the subject, ▦ changes the composition, ⊞ the grid and ⏱ sets a timer. The gear opens AI settings.']];
 let tut=0;
 function tutSeen(){try{return localStorage.getItem('sc_tut')==='1'}catch(e){return false}}
-function drawTut(){const t=TUT[tut];$('tti').textContent=t[0];$('ttt').textContent=t[1];$('ttd').textContent=t[2];
+function drawTut(){const t=TUT[tut];['tti','ttt','ttd'].forEach(k=>{const e=$(k);e.style.animation='none';void e.offsetWidth;e.style.animation='stepIn .35s ease both'});$('tti').textContent=t[0];$('ttt').textContent=t[1];$('ttd').textContent=t[2];
   $('tnext').textContent=tut<TUT.length-1?'Next':'Got it';$('tdots').textContent=TUT.map((_,i)=>i===tut?'●':'○').join(' ')}
-function showTut(){tut=0;drawTut();$('tutor').style.display='flex'}
-function closeTut(){$('tutor').style.display='none';try{localStorage.setItem('sc_tut','1')}catch(e){}}
+function showTut(){tut=0;drawTut();openEl($('tutor'))}
+function closeTut(){closeEl($('tutor'));try{localStorage.setItem('sc_tut','1')}catch(e){}}
 $('tnext').onclick=()=>{if(tut<TUT.length-1){tut++;drawTut()}else closeTut()};
 $('tskip').onclick=closeTut;
-$('tutlink').onclick=()=>{$('cfg').style.display='none';showTut()};
+$('tutlink').onclick=()=>{closeEl($('cfg'));showTut()};
 $('tmr').onclick=()=>{tmr=tmr===0?3:tmr===3?10:0;$('tmr').textContent=tmr?tmr+'s':'⏱';$('tmr').classList.toggle('on',!!tmr);toast(tmr?'Timer: '+tmr+' seconds':'Timer off')};
 $('flip').onclick=async()=>{
   if(!started)return;front=!front;

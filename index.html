@@ -83,7 +83,9 @@ small{opacity:.6}
 #vs::-webkit-scrollbar{display:none}
 .sl{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center}
 .sl img{width:100%;height:100%;object-fit:contain}
-#viewer.hide .top,#viewer.hide .bot{opacity:0;pointer-events:none}
+#viewer.hide .top,#viewer.hide .bot{opacity:0}
+.top,.bot{pointer-events:none}.top>*,.bot>*{pointer-events:auto}
+#viewer.hide .top>*,#viewer.hide .bot>*{pointer-events:none}
 #vheart.on{color:#ff375f}#vheart.on svg{fill:currentColor}
 #sheet{background:rgba(0,0,0,.45);z-index:40;justify-content:flex-end;padding:12px 10px calc(env(safe-area-inset-bottom,0px) + 10px);box-sizing:border-box}
 #shbox{background:rgba(40,40,44,.97);border-radius:26px;padding:6px 6px;max-height:80dvh;overflow:auto}
@@ -208,10 +210,14 @@ function info(m){toast(m,3000)}
 
 let oriOk=false,oriAsked=false,oriHooked=false;
 function hookOri(){if(oriHooked)return;oriHooked=true;addEventListener('deviceorientation',e=>{if(e.gamma!=null){tiltS+=(e.gamma-tiltS)*.2;ori=[e.beta||0,e.gamma||0,e.alpha||0]}})}
-async function unlock(){ // needs a real tap on iOS: audio + motion permission. Safe to call again and again.
-  if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}else if(ac.state==='suspended'){try{ac.resume()}catch(e){}}
-  if(!oriAsked&&window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){
-    try{const r=await DeviceOrientationEvent.requestPermission();oriAsked=true;oriOk=r==='granted'}catch(e){}}
+let oriBusy=false;
+async function unlock(e){ // audio + motion permission need a tap. Only ask while the camera is on screen, never over the gallery or a share sheet.
+  if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(_){}}else if(ac.state==='suspended'){try{ac.resume()}catch(_){}}
+  const onCam=!e||!e.target||!e.target.closest||e.target.closest('#stage,#bar');
+  if(onCam&&!oriAsked&&!oriBusy&&window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){
+    oriBusy=true;
+    try{const r=await DeviceOrientationEvent.requestPermission();oriAsked=true;oriOk=r==='granted'}catch(_){}
+    oriBusy=false}
 }
 hookOri();
 addEventListener('touchend',unlock,{passive:true});addEventListener('click',unlock);
@@ -536,8 +542,20 @@ async function capture(manual){
     if(manual&&sc.blurry){openViewer(shots.length-1);showInfo(rec)}else toast('📸 Captured · '+Math.round(sc.total)+'/10 · tap the thumbnail',3000);
   }finally{capBusy=false}
 }
-async function shareMany(list){const fs=list.map(s=>new File([s.blob],'shotcoach-'+s.t+'.jpg',{type:'image/jpeg'}));
-  try{if(navigator.canShare&&navigator.canShare({files:fs}))await navigator.share({files:fs});else toast('Press and hold a photo to save')}catch(e){}}
+async function shareMany(list){
+  const fs=list.map(s=>new File([s.blob],'shotcoach-'+s.t+'.jpg',{type:'image/jpeg'}));
+  try{
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:fs})){await navigator.share({files:fs});return}
+  }catch(e){if(e&&e.name==='AbortError')return} // closed the sheet on purpose
+  saveFallback(list)} // share sheet unavailable: show the photo so it can be saved by touch and hold
+function savePhotos(list){toast('In the share sheet tap “Save Image”',3500);shareMany(list)}
+function saveFallback(list){const b=$('shbox'),d=document.createElement('div');d.className='inf';b.innerHTML='';
+  d.innerHTML='<b>Save to Photos</b><p>Touch and hold the photo, then tap “Save to Photos”.</p>';
+  const w=document.createElement('div');w.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
+  list.forEach(s=>{const im=new Image();im.src=s.url;im.style.cssText='width:100%;max-height:44dvh;object-fit:contain;border-radius:12px;background:#000';w.appendChild(im)});
+  d.appendChild(w);b.appendChild(d);
+  if(list.length===1){const a=document.createElement('a');a.className='sb';a.href=list[0].url;a.download='shotcoach-'+list[0].t+'.jpg';a.textContent='Save to Files';a.style.textDecoration='none';b.appendChild(a)}
+  const x=document.createElement('button');x.className='sb';x.style.fontWeight='600';x.textContent='Done';x.onclick=closeSheet;b.appendChild(x);openEl($('sheet'))}
 const shareOne=s=>shareMany([s]);
 /* ---- Photos-style library (grid) and viewer ---- */
 const IC={back:'<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
@@ -599,7 +617,7 @@ function renderLib(anim){const g=$('lgrid'),L=order();g.innerHTML='';$('lib').cl
   updateSel()}
 $('lsel').onclick=()=>{selMode=!selMode;selSet.clear();const st=$('lgrid').scrollTop;renderLib();$('lgrid').scrollTop=st};
 $('lback').onclick=closeLib;
-$('lshare').onclick=()=>{if(selSet.size)shareMany([...selSet])};
+$('lshare').onclick=()=>{if(selSet.size)savePhotos([...selSet])};
 $('ltrash').onclick=()=>{if(selSet.size)askDel([...selSet])};
 const curShot=()=>vList[vi];
 function vSync(){const s=curShot();if(!s)return;$('vday').textContent=dayLbl(s.t);$('vtime').textContent=timeLbl(s.t);$('vheart').classList.toggle('on',!!s.fav)}
@@ -637,7 +655,7 @@ $('vheart').onclick=()=>{const s=curShot();if(!s)return;s.fav=!s.fav;dbSet(s);vS
 $('vshare').onclick=()=>{const s=curShot();if(s)shareOne(s)};
 $('vtrash').onclick=()=>{const s=curShot();if(s)askDel([s])};
 $('vinfo').onclick=()=>{const s=curShot();if(s)showInfo(s)};
-$('vmore').onclick=()=>{const s=curShot();if(s)sheet([{t:'Save / Share',fn:()=>shareOne(s)},{t:'Photo Info',fn:()=>showInfo(s)},{t:'Delete Photo',red:1,fn:()=>askDel([s])}])};
+$('vmore').onclick=()=>{const s=curShot();if(s)sheet([{t:'Save to Photos',fn:()=>savePhotos([s])},{t:'Share…',fn:()=>shareOne(s)},{t:'Photo Info',fn:()=>showInfo(s)},{t:'Delete Photo',red:1,fn:()=>askDel([s])}])};
 $('burstb').onclick=()=>{burstOn=!burstOn;$('burstb').classList.toggle('on',burstOn);toast(burstOn?'📷 Burst on: shoots 5, keeps the sharpest':'Burst off',2500)};
 loadShots();
 function showCd(n){const e=$('cd');e.textContent=n;e.style.display='flex'}

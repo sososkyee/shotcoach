@@ -19,10 +19,12 @@ video{object-fit:cover;transform-origin:center;transition:transform .25s ease,fi
 .glass{background:var(--glass);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:999px}
 #pill{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:9px 16px;font-weight:600;font-size:15px;white-space:nowrap;max-width:88%;overflow:hidden;text-overflow:ellipsis;transition:color .25s}
 #pill.ok{color:var(--g)}#pill.no{color:var(--y)}
+#steady{position:absolute;top:50px;left:12px;padding:5px 10px;font-size:12px;font-weight:600;display:none;transition:color .25s}
+#clip{position:absolute;top:50px;right:10px;padding:5px 10px;font-size:12px;font-weight:600;display:none;color:#ff6b5e}
 #lightpill{position:absolute;top:12px;left:12px;padding:7px 11px;font-size:13px;display:none}
 #gear{position:absolute;top:8px;right:10px;width:40px;height:40px;padding:0;font-size:18px}
 #zr{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;padding:5px}
-#zr button{padding:7px 13px;font-size:14px;font-weight:600;background:transparent}
+#zr button{padding:7px 11px;font-size:14px;font-weight:600;background:transparent}
 #zr button.on{background:rgba(255,255,255,.9);color:#000}
 button{font:inherit;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:999px;padding:9px 16px;transition:transform .1s,background .2s}
 button:active{transform:scale(.94)}
@@ -39,6 +41,11 @@ button:active{transform:scale(.94)}
 .tg{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;padding:8px 14px}
 .tg.on{background:rgba(255,214,10,.9);color:#000}
 #info{font-size:12px;opacity:.6;min-height:16px;text-align:center}
+#tint{position:absolute;inset:0;pointer-events:none;transition:background .4s}
+#tipbar{position:absolute;top:92px;left:50%;transform:translateX(-50%);padding:6px 12px;font-size:13px;display:none;max-width:90%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sunbody b{font-size:17px}
+.shot{display:flex;flex-direction:column;gap:6px}.sc{font-size:13px;line-height:1.4}.sc b{font-size:16px}.shot .row button{padding:7px 14px;font-size:14px}
+#cd{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:130px;font-weight:700;text-shadow:0 4px 24px #000a;pointer-events:none}
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .35s}
 #toast{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);padding:8px 14px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;z-index:10;align-items:center;justify-content:center}
@@ -47,20 +54,22 @@ button:active{transform:scale(.94)}
 input,select{font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid #444;background:#000;color:#fff}
 .row{display:flex;gap:10px;justify-content:center}
 small{opacity:.6}
-#imgs{overflow:auto;display:flex;flex-direction:column;gap:8px}#imgs img{width:100%;border-radius:10px}
+#imgs{overflow:auto;display:flex;flex-direction:column;gap:8px}#imgs img{width:100%;max-height:46dvh;object-fit:contain;background:#000;border-radius:10px}
 </style></head><body>
-<div id="stage"><video id="v" playsinline muted autoplay></video><canvas id="ov"></canvas>
-<div id="flash"></div>
-<div id="pill" class="glass no">Tap Start</div><div id="lightpill" class="glass"></div>
+<div id="stage"><video id="v" playsinline muted autoplay></video><div id="tint"></div><canvas id="ov"></canvas>
+<div id="flash"></div><div id="cd"></div>
+<div id="pill" class="glass no">Tap Start</div><div id="lightpill" class="glass"></div><div id="steady" class="glass">● Steady</div><div id="clip" class="glass">☀️ Highlights blowing out</div><div id="tipbar" class="glass"></div>
 <button id="gear" class="glass" aria-label="AI settings">⚙️</button>
 <div id="toast" class="glass"></div>
-<div id="zr" class="glass"><button data-z="1" class="on">1x</button><button data-z="2">2x</button><button data-z="3">3x</button><button id="auto" title="Auto-shoot">⚡</button><button id="enh" class="on" title="Auto-enhance">🌓</button></div>
+<div id="zr" class="glass"><button data-z="1" class="on">1x</button><button data-z="2">2x</button><button data-z="3">3x</button><button id="auto" title="Auto-shoot">⚡</button><button id="enh" class="on" title="Auto-enhance">🌓</button><button id="comp" title="Composition">▦</button><button id="sunb" title="Sun &amp; light">☀️</button></div>
 <div id="welcome"><h1>ShotCoach</h1><p>Point at a scene, follow the arrow, and shoot when everything turns green.</p><button id="start">Start camera</button><div id="tipi"></div></div></div>
 <div id="bar">
-  <button id="thumb" aria-label="Photos"><span id="cnt" style="display:none">0</span></button>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><button id="thumb" aria-label="Photos"><span id="cnt" style="display:none">0</span></button>
+    <div class="row" style="gap:6px"><button id="flip" class="tg" style="padding:6px 10px;font-size:15px" aria-label="Flip camera">🔄</button><button id="tmr" class="tg" style="padding:6px 10px;font-size:15px" aria-label="Timer">⏱</button></div></div>
   <button id="shutter" aria-label="Shutter"></button>
   <div style="display:flex;flex-direction:column;gap:6px">
-    <button id="ai" class="tg">✨<span>AI</span></button>
+    <div class="row" style="gap:6px"><button id="ai" class="tg" style="padding:5px 8px">✨<span>AI</span></button><button id="burstb" class="tg" style="padding:5px 8px">📷<span>Burst</span></button></div>
+    <div class="row" style="gap:6px"><button id="gridb" class="tg" style="padding:5px 8px">⊞<span>Thirds</span></button><button id="presetb" class="tg" style="padding:5px 8px">🎨<span>Natural</span></button></div>
   </div>
 </div>
 
@@ -70,9 +79,18 @@ small{opacity:.6}
 <input id="cm" placeholder="Model (must support images)" autocapitalize="off" autocorrect="off">
 <input id="cu" placeholder="Base URL" autocapitalize="off" autocorrect="off">
 <small id="cs"></small>
+<small id="tutlink" style="text-decoration:underline;text-align:center">Replay tutorial</small>
+<button id="sndb">🔔 Sounds: on</button>
 <div class="row"><button id="csave" style="background:var(--y);color:#000;font-weight:600">Save &amp; turn on</button><button id="ccancel">Cancel</button></div></div></div>
 <div id="tray" class="ov"><div class="card"><h3 id="tt">Photos</h3><div id="imgs"></div><small>Tap Save to share, or press and hold a photo → Save to Photos.</small>
-<div class="row"><button id="tshare" style="background:var(--y);color:#000;font-weight:600">Save / Share</button><button id="tclose">Done</button></div></div></div>
+<div class="row"><button id="tclose" style="background:var(--y);color:#000;font-weight:600">Done</button></div></div></div>
+
+<div id="sunp" class="ov"><div class="card"><h3>☀️ Sun &amp; light</h3><div id="sunbody"></div><small>Calculated on your phone from your location and the time. Nothing is sent anywhere.</small>
+<div class="row"><button id="sunref">Refresh</button><button id="sunclose" style="background:var(--y);color:#000;font-weight:600">Done</button></div></div></div>
+<div id="tutor" class="ov"><div class="card" style="text-align:center;align-items:center">
+<div id="tti" style="font-size:54px"></div><h3 id="ttt"></h3><p id="ttd" style="margin:0;opacity:.8;line-height:1.45"></p>
+<div id="tdots" style="letter-spacing:6px;opacity:.6"></div>
+<div class="row"><button id="tnext" style="background:var(--y);color:#000;font-weight:600"></button><button id="tskip">Skip</button></div></div></div>
 
 <script>
 const $=id=>document.getElementById(id),v=$('v'),ov=$('ov'),cx=ov.getContext('2d');
@@ -80,8 +98,22 @@ const W=48,H=64,GW=12,GH=16,wk=document.createElement('canvas');wk.width=W;wk.he
 const wx=wk.getContext('2d',{willReadFrequently:true});
 let zoom=1,tiltS=0,tbox=null,box=null,aiBox=null,alpha=0,cm=0,label='',tip='',state='search',alignedAt=0,readyAt=0,wasOk=false,
     prev=null,pgrid=null,curPk=-1,useAI=false,aiBusy=false,lastAi=0,aiGap=5000,started=false,auto=false,lastShot=0,
-    TX=.5,TY=.5,jump=0,enh=true,E={e:1,c:1,s:1.1,g:[1,1,1]},pend='',pc=0,lightKey='',lcand='',lcn=0,tLast=0,last=0,shots=[],hintTxt='';
-const PROMPT='You are a photography coach looking at a live camera frame. Pick the single best subject for a striking photo (light, lines, symmetry, colour). Reply with ONLY JSON: {"label":"2-4 words","box":[x,y,w,h],"tip":"max 6 words"}. box is normalized 0-1, top-left origin.';
+    TX=.5,TY=.5,jump=0,enh=true,E={e:1,c:1,s:1.1,g:[1,1,1]},pend='',pc=0,lightKey='',lcand='',lcn=0,tLast=0,last=0,shots=[],hintTxt='',tgx=null,tgy=null,face='none',clipM=null,clipOn=false,clipN=0,mot=0,steady=true,ori=null,oriP=null,tkT=0,
+    mode=(()=>{try{return localStorage.getItem('sc_mode')}catch(e){return null}})();
+if(!['center','thirds','lead'].includes(mode))mode='thirds';
+let front=false,tmr=0,cdT=null,stream=null,preset=(()=>{try{return localStorage.getItem('sc_preset')}catch(e){return null}})();
+const PR={natural:{n:'Natural',e:1,c:1,s:1,g:[1,1,1],f:0,t:'transparent'},
+  moody:{n:'Moody',e:.88,c:1.15,s:.85,g:[.96,1,1.06],f:0,t:'rgba(30,60,130,.10)'},
+  bright:{n:'Bright',e:1.12,c:.95,s:1.12,g:[1,1,1],f:0,t:'transparent'},
+  film:{n:'Film',e:1,c:1.08,s:.85,g:[1.05,1,.93],f:18,t:'rgba(255,170,60,.10)'}};
+if(!PR[preset])preset='natural';
+const TI={portrait:'🧑',food:'🍽️',architecture:'🏛️',landscape:'🏞️',pet:'🐾',street:'🚶',macro:'🔍'};
+let burstOn=false,capBusy=false;const MAXS=30;
+let ac=null,snd=(()=>{try{return localStorage.getItem('sc_snd')!=='0'}catch(e){return true}})(),coords=null;
+const GRIDS=['thirds','golden','diag','sym','off'],GN={thirds:'Thirds',golden:'Golden',diag:'Diagonal',sym:'Symmetry',off:'No grid'};
+let gridK=(()=>{try{return localStorage.getItem('sc_grid')}catch(e){return null}})(),GL=[1/3,2/3];
+if(!GRIDS.includes(gridK))gridK='thirds';
+const PROMPT='You are a photography coach looking at a live camera frame. Pick the single best subject for a striking photo (light, lines, symmetry, colour). First decide what kind of shot it is, then give ONE concrete tip for that kind of shot, for example portrait: crouch lower, or step back because you are cutting off the top; food: shoot from above or move to a window; architecture: keep vertical lines straight, step back; landscape: lower the horizon, add foreground; any: turn 90 degrees to avoid glare. Reply with ONLY JSON: {"label":"2-4 words","type":"portrait|food|architecture|landscape|pet|street|macro|other","box":[x,y,w,h],"tip":"max 7 words, imperative","facing":"left|right|none"}. box is normalized 0-1, top-left origin. facing is the direction the subject looks or moves toward as seen in the frame, none if it has no direction.';
 const LT={dim:'🌙 Dim light',harsh:'😎 Harsh light',golden:'🌇 Golden light',soft:'☁️ Soft light'};
 const standalone=navigator.standalone===true;
 if(!standalone)$('tipi').textContent='Tip: Share → Add to Home Screen for full screen';
@@ -93,20 +125,44 @@ function info(m){toast(m,3000)}
 
 $('start').onclick=async()=>{
   try{
+    try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){} // must be created inside the tap
     if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){try{await DeviceOrientationEvent.requestPermission()}catch(e){}}
-    addEventListener('deviceorientation',e=>{if(e.gamma!=null)tiltS+=(e.gamma-tiltS)*.2});
-    const s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1440}}});
-    v.srcObject=s;await v.play();nativeAuto(s);$('welcome').style.display='none';started=true;$('pill').textContent='Looking for a great shot…';
-    requestAnimationFrame(draw);keepAwake();
+    addEventListener('deviceorientation',e=>{if(e.gamma!=null){tiltS+=(e.gamma-tiltS)*.2;ori=[e.beta||0,e.gamma||0,e.alpha||0]}});
+    await openCam();$('welcome').style.display='none';$('steady').style.display='block';started=true;$('pill').textContent='Looking for a great shot…';
+    requestAnimationFrame(draw);keepAwake();if(!tutSeen())showTut();
   }catch(e){$('welcome').querySelector('p').textContent='Camera blocked. In Safari tap aA → Website Settings → Camera → Allow, then reload.'}
 };
 async function keepAwake(){try{if(navigator.wakeLock)await navigator.wakeLock.request('screen')}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&started){v.play();keepAwake()}});
 document.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>setZoom(+b.dataset.z));
-function setZoom(z){zoom=z;v.style.transform='scale('+z+')';aiBox=null;tbox=null;pgrid=null;curPk=-1;
+async function openCam(){
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  const s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:front?'user':'environment'},width:{ideal:1920},height:{ideal:1440}}});
+  stream=s;v.srcObject=s;await v.play();nativeAuto(s);
+}
+function applyXf(){v.style.transform='scale('+(front?-zoom:zoom)+','+zoom+')'} // front camera is mirrored like a real mirror
+function grab(ctx,cw,ch){const[a,b,w,h]=vr();if(front){ctx.save();ctx.translate(cw,0);ctx.scale(-1,1)}ctx.drawImage(v,a,b,w,h,0,0,cw,ch);if(front)ctx.restore()}
+function setZoom(z){zoom=z;applyXf();aiBox=null;tbox=null;pgrid=null;curPk=-1;
   document.querySelectorAll('[data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===z))}
 $('auto').onclick=()=>{auto=!auto;$('auto').classList.toggle('on',auto);toast(auto?'⚡ Auto-shoot on: fires when everything is green':'Auto-shoot off')};
-$('enh').onclick=()=>{enh=!enh;$('enh').classList.toggle('on',enh);if(!enh)v.style.filter='none';toast(enh?'🌓 Auto-enhance on':'Auto-enhance off')};
+$('enh').onclick=()=>{enh=!enh;$('enh').classList.toggle('on',enh);filt();toast(enh?'🌓 Auto-enhance on':'Auto-enhance off')};
+const MODES={center:['◎','Center: subject in the middle'],thirds:['▦','Rule of thirds: subject on a power point'],lead:['➡','Leading space: room in front of the subject (best with AI on)']};
+function setMode(m,quiet){mode=m;tgx=tgy=null;$('comp').textContent=MODES[m][0];$('comp').classList.toggle('on',m!=='center');
+  try{localStorage.setItem('sc_mode',m)}catch(e){}if(!quiet)toast(MODES[m][1],2800)}
+$('comp').onclick=()=>setMode(mode==='center'?'thirds':mode==='thirds'?'lead':'center');
+function near(m,cur){const a=GL[0],b=GL[1];if(cur==null)return m<.5?a:b;const o=cur===a?b:a;return Math.abs(m-o)+.08<Math.abs(m-cur)?o:cur} // hysteresis: no flip-flopping
+function pickTarget(mx,my){
+  if(mode==='center'){TX=.5;TY=.5;return}
+  tgy=near(my,tgy);
+  if(mode==='lead'&&face!=='none')tgx=face==='right'?GL[0]:GL[1]; // facing right => subject sits left, space ahead
+  else tgx=near(mx,tgx);
+  TX=tgx;TY=tgy;
+}
+setMode(mode,true);
+function setGrid(k,quiet){gridK=k;GL=k==='golden'?[.382,.618]:[1/3,2/3];tgx=tgy=null;$('gridb').querySelector('span').textContent=GN[k];
+  try{localStorage.setItem('sc_grid',k)}catch(e){}if(!quiet)toast('Grid: '+GN[k])}
+$('gridb').onclick=()=>setGrid(GRIDS[(GRIDS.indexOf(gridK)+1)%GRIDS.length]);
+setGrid(gridK,true);
 function nativeAuto(st){try{const tr=st.getVideoTracks()[0],c=tr.getCapabilities?tr.getCapabilities():{},a={};
   for(const k of['focusMode','exposureMode','whiteBalanceMode'])if(c[k]&&c[k].includes('continuous'))a[k]='continuous';
   if(Object.keys(a).length)tr.applyConstraints({advanced:[a]}).catch(()=>{})}catch(e){}}
@@ -119,7 +175,7 @@ function save(o){try{localStorage.setItem('sc_cfg2',JSON.stringify(o))}catch(e){
 function active(){const o=store();return o.p&&o.by&&o.by[o.p]&&o.by[o.p].key?Object.assign({p:o.p},o.by[o.p]):null}
 function show(p){const o=store(),t=(o.by&&o.by[p])||{};$('cp').value=p;$('ck').value=t.key||'';$('cm').value=t.model||DEF[p].model;$('cu').value=t.url||DEF[p].url;$('cu').style.display=p==='openai'?'':'none';$('cs').textContent=DEF[p].hint}
 function openCfg(){show(store().p||'gemini');$('cfg').style.display='flex'}
-function setAI(on){useAI=on;aiBox=null;lastAi=0;aiGap=5000;$('ai').classList.toggle('on',on);
+function setAI(on){useAI=on;aiBox=null;face='none';lastAi=0;aiGap=5000;$('ai').classList.toggle('on',on);
   info(on?'AI mode: '+PN[active().p]+' picks the subject':'Local mode: works offline')}
 $('cp').onchange=()=>show($('cp').value);
 $('gear').onclick=openCfg;$('ccancel').onclick=()=>$('cfg').style.display='none';
@@ -147,15 +203,14 @@ async function callAI(c,b64){
 async function askAI(){
   const c=active();if(aiBusy||!useAI||!c)return;aiBusy=true;
   try{
-    const cv=document.createElement('canvas'),A=ov.clientWidth/ov.clientHeight||.75;cv.width=384;cv.height=Math.round(384/A);const[a,b,w,h]=vr();
-    cv.getContext('2d').drawImage(v,a,b,w,h,0,0,cv.width,cv.height);
+    const cv=document.createElement('canvas'),A=ov.clientWidth/ov.clientHeight||.75;cv.width=384;cv.height=Math.round(384/A);grab(cv.getContext('2d'),cv.width,cv.height);
     const txt=await callAI(c,cv.toDataURL('image/jpeg',.7).split(',')[1]);
     const j=JSON.parse(txt.match(/\{[\s\S]*\}/)[0]);
     if(!Array.isArray(j.box)||j.box.length!==4)throw new SyntaxError('bad box');
     const nb={x:j.box[0],y:j.box[1],w:j.box[2],h:j.box[3]};
     if(aiBox&&Math.hypot(nb.x+nb.w/2-aiBox.x-aiBox.w/2,nb.y+nb.h/2-aiBox.y-aiBox.h/2)<.25){ // blend instead of jump
       for(const p of['x','y','w','h'])aiBox[p]+=(nb[p]-aiBox[p])*.5}else aiBox=nb;
-    label=j.label||'';tip=j.tip||'';
+    label=((TI[j.type]||'')+' '+(j.label||'')).trim();tip=j.tip||'';face=(j.facing==='left'||j.facing==='right')?j.facing:'none';
   }catch(e){
     const m=String(e.message||e).slice(0,100);
     if(e.status===429){aiGap=Math.min(aiGap*2,30000);info('Rate limited, slowing down…')}
@@ -169,8 +224,8 @@ async function askAI(){
 
 /* ---- detection ---- */
 function analyse(d){
-  const n=W*H,g=new Float32Array(n);let mr=0,mg=0,mb=0,lum=0,clip=0,sat=0;
-  for(let i=0;i<n;i++){const r=d[i*4],gg=d[i*4+1],b=d[i*4+2];g[i]=.299*r+.587*gg+.114*b;mr+=r;mg+=gg;mb+=b;lum+=g[i];if(g[i]>245)clip++;sat+=(Math.max(r,gg,b)-Math.min(r,gg,b))/(Math.max(r,gg,b)+1)}
+  const n=W*H,g=new Float32Array(n),cmask=new Uint8Array(n);let mr=0,mg=0,mb=0,lum=0,clip=0,sat=0;
+  for(let i=0;i<n;i++){const r=d[i*4],gg=d[i*4+1],b=d[i*4+2];g[i]=.299*r+.587*gg+.114*b;mr+=r;mg+=gg;mb+=b;lum+=g[i];if(g[i]>245){clip++;cmask[i]=1}sat+=(Math.max(r,gg,b)-Math.min(r,gg,b))/(Math.max(r,gg,b)+1)}
   mr/=n;mg/=n;mb/=n;lum/=n;sat/=n;
   const grid=new Float32Array(GW*GH),bw=W/GW,bh=H/GH;
   for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;
@@ -189,7 +244,7 @@ function analyse(d){
   const warm=mr/(mb+1),k=lum<60?'dim':clip/n>.08?'harsh':(warm>1.15&&lum>90)?'golden':'soft';
   const hist=new Uint16Array(256);for(let i=0;i<n;i++)hist[g[i]|0]++;let cum=0,p2=-1,p98=255;
   for(let i=0;i<256;i++){cum+=hist[i];if(p2<0&&cum>n*.02)p2=i;if(cum>n*.98){p98=i;break}}
-  return{rect:{x:x0/GW,y:y0/GH,w:(x1-x0+1)/GW,h:(y1-y0+1)/GH},gray:g,light:k,st:{lum,sat,p2:Math.max(0,p2),p98,mr,mg,mb}};
+  return{clipMask:cmask,clipFrac:clip/n,rect:{x:x0/GW,y:y0/GH,w:(x1-x0+1)/GW,h:(y1-y0+1)/GH},gray:g,light:k,st:{lum,sat,p2:Math.max(0,p2),p98,mr,mg,mb}};
 }
 function track(g,b){
   if(!prev||!b)return;
@@ -213,11 +268,12 @@ function updateEnh(st){
   T={e:cl(1+(118/Math.max(st.lum,20)-1)*.6,.8,1.35),c:cl(1+(205-(st.p98-st.p2))/500,.95,1.22),s:st.sat<.2?1.25:1.12,
      g:[st.mr,st.mg,st.mb].map(m=>cl(1+(avg/Math.max(m,1)-1)*.5,.92,1.08))};
   E.e+=(T.e-E.e)*.12;E.c+=(T.c-E.c)*.12;E.s+=(T.s-E.s)*.12;for(let i=0;i<3;i++)E.g[i]+=(T.g[i]-E.g[i])*.12;
-  if(enh)v.style.filter='brightness('+E.e.toFixed(3)+') contrast('+E.c.toFixed(3)+') saturate('+E.s.toFixed(3)+')';
+  filt();
 }
 function applyEnh(c){
   const x=c.getContext('2d'),im=x.getImageData(0,0,c.width,c.height),d=im.data;
-  const L=[0,1,2].map(ch=>{const t=new Uint8ClampedArray(256);for(let i=0;i<256;i++)t[i]=((i*E.e*E.g[ch])-128)*E.c+128;return t}),s=E.s;
+  const p=PR[preset],ke=(enh?E.e:1)*p.e,kc=(enh?E.c:1)*p.c,kg=ch=>(enh?E.g[ch]:1)*p.g[ch];
+  const L=[0,1,2].map(ch=>{const t=new Uint8ClampedArray(256);for(let i=0;i<256;i++){const o=((i*ke*kg(ch))-128)*kc+128;t[i]=o*(1-p.f/255)+p.f}return t}),s=(enh?E.s:1)*p.s;
   for(let i=0;i<d.length;i+=4){const r=L[0][d[i]],g=L[1][d[i+1]],b=L[2][d[i+2]],l=.299*r+.587*g+.114*b;
     d[i]=l+(r-l)*s;d[i+1]=l+(g-l)*s;d[i+2]=l+(b-l)*s}
   x.putImageData(im,0,0);
@@ -227,35 +283,57 @@ function setHint(h,force){ // debounce so the text doesn’t flicker
   if(pc>=2||force){hintTxt=h;$('pill').textContent=h}
 }
 function coach(){
-  if(!tbox){state='search';wasOk=false;setHint('Looking for a great shot…');return}
+  const tb=$('tipbar'),tv=(useAI&&tip)?tip:'';if(tb._v!==tv){tb._v=tv;tb.textContent=tv;tb.style.display=tv?'block':'none'} // AI tip, shown while coaching
+  if(!tbox){state='search';wasOk=false;tgx=tgy=null;setHint('Looking for a great shot…');return}
   const mx=tbox.x+tbox.w/2,my=tbox.y+tbox.h/2;
-  TX=.5;TY=.5;
+  pickTarget(mx,my);
   const dx=TX-mx,dy=TY-my,thr=wasOk?.08:.05,ok=Math.abs(dx)<thr&&Math.abs(dy)<thr,p=[];
   if(Math.abs(dx)>=thr)p.push(dx>0?'left':'right');
   if(Math.abs(dy)>=thr)p.push(dy>0?'up':'down');
   const lvl=Math.abs(tiltS)<2.5;
-  if(ok){if(!alignedAt)alignedAt=Date.now();const s=(Date.now()-alignedAt>600&&lvl)?'ready':'aligned';
-    if(s==='ready'&&state!=='ready')readyAt=Date.now();state=s}
+  if(ok){if(!alignedAt)alignedAt=Date.now();const s=(Date.now()-alignedAt>600&&lvl&&steady)?'ready':'aligned';
+    if(s==='ready'&&state!=='ready'){readyAt=Date.now();sfx('ready')}state=s}
   else{alignedAt=0;state='adjust'}
   wasOk=ok;
   const h=ok?(state==='ready'?(tip||'Perfect')+' · shoot now':(lvl?'Hold still…':'Level your phone')):'Move phone '+p.join(' & ');
   setHint(h);
   if(!label)label='best subject';
   $('pill').className='glass '+(ok?'ok':'no');$('shutter').classList.toggle('ready',state==='ready');
-  if(auto&&state==='ready'&&Date.now()-readyAt>900&&Date.now()-lastShot>4000)capture(false);
+  if(auto&&!cdT&&state==='ready'&&Date.now()-readyAt>900&&Date.now()-lastShot>4000)capture(false);
+}
+function motion(g){ // hand-shake meter: frame difference + phone rotation speed, with hysteresis
+  const now=performance.now(),dt=Math.max(.05,(now-tkT)/1000);tkT=now;let m=0;
+  if(prev&&prev.length===g.length){let s=0;for(let i=0;i<g.length;i+=2)s+=Math.abs(g[i]-prev[i]);m=(s/(g.length/2))/7}
+  if(ori&&oriP){let d=0;for(let i=0;i<3;i++){let x=Math.abs(ori[i]-oriP[i]);if(x>180)x=360-x;d+=x*x}m=Math.max(m,Math.sqrt(d)/dt/6)}
+  oriP=ori?ori.slice():null;mot+=(m-mot)*.5;
+  if(steady&&mot>1.2)steady=false;else if(!steady&&mot<.8)steady=true;
+  const el=$('steady');el.textContent=steady?'● Steady':'≈ Shaky';el.style.color=steady?'var(--g)':'var(--y)';
 }
 function tick(){
-  wx.drawImage(v,...vr(),0,0,W,H);const r=analyse(wx.getImageData(0,0,W,H).data);
+  grab(wx,W,H);const r=analyse(wx.getImageData(0,0,W,H).data);
+  clipM=r.clipMask;clipN=r.clipFrac>(clipOn?.03:.06)?Math.min(clipN+1,6):Math.max(clipN-1,0); // highlight-clipping warning with hysteresis
+  if(!clipOn&&clipN>=3)clipOn=true;else if(clipOn&&clipN===0)clipOn=false;
+  $('clip').style.display=clipOn?'block':'none';
   if(tbox)track(r.gray,tbox);
   if(useAI){if(Date.now()-lastAi>aiGap)askAI();
-    if(aiBox){track(r.gray,aiBox);setTarget(aiBox,true)}else{label='';setTarget(r.rect,false)}}
+    if(aiBox){track(r.gray,aiBox);setTarget(aiBox,true)}else{label='';face='none';setTarget(r.rect,false)}}
   else{label='best subject';setTarget(r.rect,false)}
-  coach();updateEnh(r.st);prev=r.gray;
+  motion(r.gray);coach();updateEnh(r.st);prev=r.gray;
   if(r.light===lcand)lcn++;else{lcand=r.light;lcn=1}
   if(lcn>=4&&lightKey!==lcand){lightKey=lcand;const lp=$('lightpill');lp.textContent=LT[lightKey];lp.style.display='block'}
 }
 
 /* ---- drawing (runs every frame, eases toward the detected box) ---- */
+function foot(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,t=((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy);return[ax+t*dx,ay+t*dy]}
+function drawGrid(w,h){
+  if(gridK==='off')return;
+  cx.strokeStyle='rgba(255,255,255,.18)';cx.lineWidth=.5;cx.beginPath();
+  if(gridK==='thirds'||gridK==='golden'){for(const f of GL){cx.moveTo(w*f,0);cx.lineTo(w*f,h);cx.moveTo(0,h*f);cx.lineTo(w,h*f)}}
+  else if(gridK==='diag'){cx.moveTo(0,0);cx.lineTo(w,h);cx.moveTo(w,0);cx.lineTo(0,h); // diagonals + perpendiculars from the other corners
+    [[0,0,0,h,w,0],[w,h,0,h,w,0],[w,0,0,0,w,h],[0,h,0,0,w,h]].forEach(([px,py,ax,ay,bx,by])=>{const[fx,fy]=foot(px,py,ax,ay,bx,by);cx.moveTo(px,py);cx.lineTo(fx,fy)})}
+  else{cx.strokeStyle='rgba(255,255,255,.35)';cx.lineWidth=1;cx.moveTo(w/2,0);cx.lineTo(w/2,h);cx.moveTo(0,h/2);cx.lineTo(w,h/2)}
+  cx.stroke();
+}
 function draw(t){
   requestAnimationFrame(draw);
   const dt=Math.min(.1,(t-tLast)/1000||.016);tLast=t;
@@ -268,8 +346,9 @@ function draw(t){
   alpha+=((tbox?1:0)-alpha)*Math.min(1,k*1.5);if(alpha<.02&&!tbox)box=null;
   const good=state==='aligned'||state==='ready';cm+=((good?1:0)-cm)*Math.min(1,k*1.2);
   const col='rgb('+Math.round(255+(48-255)*cm)+','+Math.round(214+(209-214)*cm)+','+Math.round(10+(88-10)*cm)+')';
-  cx.strokeStyle='rgba(255,255,255,.18)';cx.lineWidth=.5;cx.beginPath();
-  for(let i=1;i<3;i++){cx.moveTo(w*i/3,0);cx.lineTo(w*i/3,h);cx.moveTo(0,h*i/3);cx.lineTo(w,h*i/3)}cx.stroke();
+  drawGrid(w,h);
+  if(clipOn&&clipM){cx.fillStyle='rgba(255,59,48,.38)';cx.beginPath();const cw=w/W,ch=h/H;
+    for(let i=0;i<clipM.length;i++)if(clipM[i])cx.rect((i%W)*cw,((i/W)|0)*ch,cw+.5,ch+.5);cx.fill()} // red overlay on blown-out areas
   if(alpha<.9){cx.strokeStyle='rgba(255,255,255,'+(.45*(1-alpha)).toFixed(2)+')';cx.lineWidth=1.5;cx.beginPath();cx.arc(w/2,h/2,14,0,7);cx.stroke()}
   if(box&&alpha>.02){
     cx.globalAlpha=alpha;
@@ -296,24 +375,165 @@ function draw(t){
 }
 
 /* ---- capture + tray ---- */
+/* ---- scoring, burst, gallery ---- */
+function snapCanvas(){const c=document.createElement('canvas'),A=ov.clientWidth/ov.clientHeight||.75;c.width=1440;c.height=Math.round(1440/A);grab(c.getContext('2d'),c.width,c.height);return c}
+function gray(c,w){const h=Math.round(w*c.height/c.width),t=document.createElement('canvas');t.width=w;t.height=h;
+  const x=t.getContext('2d',{willReadFrequently:true});x.drawImage(c,0,0,w,h);const d=x.getImageData(0,0,w,h).data,g=new Float32Array(w*h);
+  for(let i=0;i<w*h;i++)g[i]=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];return{g,w,h}}
+function lapVar(o){const{g,w,h}=o;let s=0,s2=0,n=0; // variance of the Laplacian = sharpness
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x,l=4*g[i]-g[i-1]-g[i+1]-g[i-w]-g[i+w];s+=l;s2+=l*l;n++}
+  const m=s/n;return s2/n-m*m}
+function scorePhoto(c,fr){
+  const o=gray(c,480),v=lapVar(o),g=o.g,n=g.length;let sum=0,clip=0,dark=0;
+  for(let i=0;i<n;i++){const l=g[i];sum+=l;if(l>250)clip++;if(l<8)dark++}
+  const mean=sum/n,cf=clip/n,df=dark/n,cl=x=>Math.max(0,Math.min(10,x));
+  const sharp=cl((Math.log10(v+1)-.7)/1.6*10),expo=cl(10-Math.abs(mean-118)/12-cf*20-df*12);
+  let pd=0,pe=0,pt=0,fram=5;
+  if(fr.tbox){const b=fr.tbox;pd=Math.hypot(b.x+b.w/2-fr.tx,b.y+b.h/2-fr.ty)*40;
+    if(b.x<.01||b.y<.01||b.x+b.w>.99||b.y+b.h>.99)pe=2;fram=10-pd-pe}
+  const tl=Math.abs(fr.tilt);if(tl>3){pt=(tl-3)*.4;fram-=pt}
+  fram=cl(fram);
+  let total=sharp*.4+expo*.3+fram*.3;const blurry=sharp<4;if(blurry)total=Math.min(total,4);
+  const low=Math.min(sharp,expo,fram);let tip='Nice shot!';
+  if(low<8){
+    if(low===sharp)tip=blurry?'Hold steadier or use the timer, then retake.':'A little soft. Brace your elbows or use the timer.';
+    else if(low===expo)tip=mean<90?'Too dark. Find more light or a brighter spot.':(cf>.05||mean>150)?'Highlights are blown. Tilt away from the bright area or step into shade.':'Exposure is off. Try different light.';
+    else tip=!fr.tbox?'No clear subject was found. Pick one and frame it.':pt>=Math.max(pd,pe)?'Level your phone.':pe>=pd?'Step back, your subject touches the edge.':'Move the subject closer to the aim point.'}
+  return{sharp,expo,fram,total,blurry,tip}}
+async function pickBest(){let best=null,bv=-1;
+  for(let i=0;i<5;i++){const c=snapCanvas(),v=lapVar(gray(c,360));if(v>bv){bv=v;best=c}if(i<4)await new Promise(r=>setTimeout(r,90))}
+  return best}
+let db=null;
+function idb(){return new Promise(res=>{try{const r=indexedDB.open('shotcoach',1);r.onupgradeneeded=()=>r.result.createObjectStore('shots',{keyPath:'id',autoIncrement:true});r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch(e){res(null)}})}
+function dbPut(rec){return new Promise(res=>{if(!db)return res(rec);try{const q=db.transaction('shots','readwrite').objectStore('shots').add({blob:rec.blob,sc:rec.sc,t:rec.t});q.onsuccess=()=>{rec.id=q.result;res(rec)};q.onerror=()=>res(rec)}catch(e){res(rec)}})}
+function dbDel(id){try{if(db&&id!=null)db.transaction('shots','readwrite').objectStore('shots').delete(id)}catch(e){}}
+function refreshThumb(){if(shots.length){$('thumb').style.backgroundImage='url('+shots[0].url+')';$('cnt').style.display='block';$('cnt').textContent=shots.length}
+  else{$('thumb').style.backgroundImage='none';$('cnt').style.display='none'}}
+async function loadShots(){db=await idb();if(!db)return;
+  try{const all=await new Promise(res=>{const q=db.transaction('shots').objectStore('shots').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])});
+    all.sort((a,b)=>b.id-a.id);
+    for(const r of all.slice(0,MAXS))shots.push({id:r.id,blob:r.blob,sc:r.sc,t:r.t,url:URL.createObjectURL(r.blob)});
+    for(const r of all.slice(MAXS))dbDel(r.id);refreshThumb()}catch(e){}}
 async function capture(manual){
-  if(!started)return;lastShot=Date.now();
-  const c=document.createElement('canvas'),A=ov.clientWidth/ov.clientHeight||.75;c.width=1440;c.height=Math.round(1440/A);c.getContext('2d').drawImage(v,...vr(),0,0,c.width,c.height);if(enh)applyEnh(c);
-  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.92));
-  shots.unshift({blob,url:URL.createObjectURL(blob)});if(shots.length>12)URL.revokeObjectURL(shots.pop().url);
+  if(!started||capBusy)return;capBusy=true;lastShot=Date.now();sfx('shutter');
   const f=$('flash');f.style.transition='none';f.style.opacity=.85;requestAnimationFrame(()=>{f.style.transition='opacity .35s';f.style.opacity=0});
-  $('thumb').style.backgroundImage='url('+shots[0].url+')';$('cnt').style.display='block';$('cnt').textContent=shots.length;
-  if(manual)openTray();else toast('📸 Captured · tap the thumbnail to save');
+  try{
+    const fr={tbox:tbox?{...tbox}:null,tx:TX,ty:TY,tilt:tiltS};
+    let c;if(burstOn){toast('📷 Burst: keeping the sharpest of 5…',1500);c=await pickBest()}else c=snapCanvas();
+    if(enh||preset!=='natural')applyEnh(c);
+    const sc=scorePhoto(c,fr);sc.burst=burstOn;
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.92));
+    const rec={blob,url:URL.createObjectURL(blob),sc,t:Date.now()};
+    shots.unshift(rec);await dbPut(rec);
+    while(shots.length>MAXS){const o=shots.pop();URL.revokeObjectURL(o.url);dbDel(o.id)}
+    refreshThumb();
+    if(manual)openTray();else toast((sc.blurry?'⚠️ Captured, but it looks blurry':'📸 Captured · '+Math.round(sc.total)+'/10')+' · tap the thumbnail',3000);
+  }finally{capBusy=false}
 }
+async function shareOne(s){const f=new File([s.blob],'shotcoach-'+s.t+'.jpg',{type:'image/jpeg'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else toast('Press and hold the photo to save')}catch(e){}}
+function removeShot(s,close){const i=shots.indexOf(s);if(i<0)return;shots.splice(i,1);URL.revokeObjectURL(s.url);dbDel(s.id);refreshThumb();
+  if(close||!shots.length)$('tray').style.display='none';else openTray()}
 function openTray(){
   if(!shots.length)return;$('tt').textContent='Photos ('+shots.length+')';
-  $('imgs').innerHTML='';shots.forEach(s=>{const i=new Image();i.src=s.url;$('imgs').appendChild(i)});$('tray').style.display='flex';
+  const box=$('imgs');box.innerHTML='';
+  shots.forEach(s=>{
+    const d=document.createElement('div');d.className='shot';const im=new Image();im.src=s.url;d.appendChild(im);
+    if(s.sc){const sc=s.sc,e=document.createElement('div');e.className='sc';
+      e.innerHTML='<b>'+Math.round(sc.total)+'/10</b> · Sharp '+Math.round(sc.sharp)+' · Exposure '+Math.round(sc.expo)+' · Framing '+Math.round(sc.fram)+(sc.burst?' · best of 5':'')+'<br><small>'+(sc.blurry?'⚠️ Looks blurry. ':'')+sc.tip+'</small>';d.appendChild(e)}
+    const r=document.createElement('div');r.className='row';
+    const sv=document.createElement('button');sv.textContent='Save / Share';sv.style.cssText='background:var(--y);color:#000;font-weight:600';sv.onclick=()=>shareOne(s);r.appendChild(sv);
+    const dl=document.createElement('button');dl.textContent=s.sc&&s.sc.blurry?'🔁 Retake':'🗑 Delete';dl.onclick=()=>removeShot(s,!!(s.sc&&s.sc.blurry));r.appendChild(dl);
+    d.appendChild(r);box.appendChild(d)});
+  $('tray').style.display='flex';
 }
-$('shutter').onclick=()=>capture(true);
+$('burstb').onclick=()=>{burstOn=!burstOn;$('burstb').classList.toggle('on',burstOn);toast(burstOn?'📷 Burst on: shoots 5, keeps the sharpest':'Burst off',2500)};
+loadShots();
+function showCd(n){const e=$('cd');e.textContent=n;e.style.display='flex'}
+function cancelCd(fired){clearInterval(cdT);cdT=null;$('cd').style.display='none';if(!fired)toast('Timer cancelled')}
+function shutterTap(){
+  if(cdT)return cancelCd();
+  if(!tmr)return capture(true);
+  let n=tmr;showCd(n);sfx('beep');
+  cdT=setInterval(()=>{n--;if(n>0){showCd(n);sfx('beep');return}cancelCd(true);capture(true)},1000);
+}
+$('shutter').onclick=shutterTap;
+/* ---- style presets: look applied on top of auto-enhance, in preview and in the saved photo ---- */
+function filt(){const p=PR[preset],e=enh?E.e:1,c=enh?E.c:1,s=enh?E.s:1;
+  v.style.filter=(enh||preset!=='natural')?'brightness('+(e*p.e).toFixed(3)+') contrast('+(c*p.c).toFixed(3)+') saturate('+(s*p.s).toFixed(3)+')':'none'}
+function setPreset(k,quiet){preset=k;$('presetb').querySelector('span').textContent=PR[k].n;$('presetb').classList.toggle('on',k!=='natural');
+  $('tint').style.background=PR[k].t;filt();try{localStorage.setItem('sc_preset',k)}catch(e){}if(!quiet)toast('Style: '+PR[k].n)}
+$('presetb').onclick=()=>{const ks=Object.keys(PR);setPreset(ks[(ks.indexOf(preset)+1)%ks.length])};
+setPreset(preset,true);
+/* ---- sounds (Web Audio; iPhone's silent switch mutes them) ---- */
+function sfx(k){if(!snd||!ac)return;try{if(ac.state==='suspended')ac.resume();const t=ac.currentTime;
+  const tone=(f,t0,d,vol,type)=>{const o=ac.createOscillator(),g=ac.createGain();o.type=type||'sine';o.frequency.value=f;
+    g.gain.setValueAtTime(0,t+t0);g.gain.linearRampToValueAtTime(vol,t+t0+.005);g.gain.exponentialRampToValueAtTime(.0001,t+t0+d);
+    o.connect(g);g.connect(ac.destination);o.start(t+t0);o.stop(t+t0+d+.02)};
+  if(k==='ready'){tone(1200,0,.08,.1);tone(1700,.07,.1,.1)}
+  else if(k==='beep')tone(880,0,.12,.15);
+  else if(k==='shutter'){tone(220,0,.05,.22,'square');tone(110,.045,.08,.2,'square')}
+}catch(e){}}
+function setSnd(on,quiet){snd=on;$('sndb').textContent='🔔 Sounds: '+(on?'on':'off');try{localStorage.setItem('sc_snd',on?'1':'0')}catch(e){}if(!quiet&&on)sfx('ready')}
+$('sndb').onclick=()=>setSnd(!snd);setSnd(snd,true);
+/* ---- sun & light: all maths on-device (NOAA/SunCalc style) ---- */
+const RAD=Math.PI/180,DIRS=['N','NE','E','SE','S','SW','W','NW'];
+function sunPos(t,lat,lon){const d=t/86400000-.5+2440588-2451545,M=RAD*(357.5291+.98560028*d),
+  C=RAD*(1.9148*Math.sin(M)+.02*Math.sin(2*M)+.0003*Math.sin(3*M)),L=M+C+RAD*102.9372+Math.PI,e=RAD*23.4397,
+  dec=Math.asin(Math.sin(e)*Math.sin(L)),ra=Math.atan2(Math.sin(L)*Math.cos(e),Math.cos(L)),
+  H=RAD*(280.16+360.9856235*d)+RAD*lon-ra,phi=RAD*lat;
+  return{alt:Math.asin(Math.sin(phi)*Math.sin(dec)+Math.cos(phi)*Math.cos(dec)*Math.cos(H))/RAD,
+    az:(((Math.atan2(Math.sin(H),Math.cos(H)*Math.sin(phi)-Math.tan(dec)*Math.cos(phi))/RAD+180)%360)+360)%360}}
+function sunEvents(lat,lon){const now=Date.now(),ev={};let a0=sunPos(now,lat,lon).alt;
+  for(let m=1;m<=1440;m++){const t=now+m*60000,a1=sunPos(t,lat,lon).alt;
+    if(!ev.rise&&a0<-.833&&a1>=-.833)ev.rise=t;
+    if(!ev.set&&a0>-.833&&a1<=-.833)ev.set=t;
+    if(!ev.gAm&&a0<6&&a1>=6)ev.gAm=t;
+    if(!ev.gPm&&a0>6&&a1<=6)ev.gPm=t;
+    a0=a1}
+  return ev}
+const fmtT=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+const rel=t=>{const m=Math.max(1,Math.round((t-Date.now())/60000));return m<60?m+' min':Math.floor(m/60)+' h '+(m%60)+' min'};
+const dir=az=>DIRS[Math.round(az/45)%8];
+function renderSun(lat,lon){
+  const n=sunPos(Date.now(),lat,lon),ev=sunEvents(lat,lon);let ph,adv;
+  if(n.alt>=35){ph='☀️ Harsh overhead light';adv='Look for open shade, or put the sun behind your subject.'}
+  else if(n.alt>=6){ph='🌤️ Good daylight';adv='Side light adds depth. Sun behind you gives even colour.'}
+  else if(n.alt>=-4){ph='🌇 Golden hour right now';adv='Warm, soft light. Sun behind you glows on faces, in front gives rim light.'}
+  else if(n.alt>=-8){ph='🌆 Blue hour';adv='Deep blue sky. Hold steady and look for lit windows.'}
+  else{ph='🌙 Night';adv='Hold very still and use bright spots as your subject.'}
+  const L=[[ev.rise,'🌅 Sunrise'],[ev.gAm,'Morning golden hour ends'],[ev.gPm,'🌇 Golden hour starts'],[ev.set,'🌆 Sunset']].filter(x=>x[0]).sort((a,b)=>a[0]-b[0]);
+  let h='<b>'+ph+'</b><br>Sun: '+(n.alt>0?dir(n.az)+' ('+Math.round(n.az)+'°), '+Math.round(n.alt)+'° up':'below the horizon')+'<br>'+adv+'<br><br>';
+  h+=L.length?L.map(([t,l])=>fmtT(t)+' · in '+rel(t)+'<br><small>'+l+', sun in the '+dir(sunPos(t,lat,lon).az)+'</small>').join('<br>'):'No sunrise or sunset in the next 24 hours at this latitude.';
+  return h}
+function loadSun(){const b=$('sunbody');
+  if(coords){b.innerHTML=renderSun(coords[0],coords[1]);return}
+  if(!navigator.geolocation){b.textContent='Location isn’t available in this browser.';return}
+  b.textContent='Finding your location…';
+  navigator.geolocation.getCurrentPosition(p=>{coords=[p.coords.latitude,p.coords.longitude];b.innerHTML=renderSun(coords[0],coords[1])},
+    ()=>{b.textContent='Location is blocked. In Safari tap aA → Website Settings → Location → Allow, then reopen this.'},{timeout:10000,maximumAge:600000})}
+$('sunb').onclick=()=>{$('sunp').style.display='flex';loadSun()};
+$('sunclose').onclick=()=>$('sunp').style.display='none';
+$('sunref').onclick=()=>{coords=null;loadSun()};
+/* ---- first-run tutorial ---- */
+const TUT=[['🎯','Follow the arrow','Move your phone until the circle sits on the target. Yellow means keep adjusting, green means you nailed it.'],
+ ['📸','Shoot on green','Hold steady and level. When the shutter glows green, tap it. Turn on ⚡ and the app fires for you.'],
+ ['🎛️','Make it yours','✨ lets AI pick the subject, ▦ changes the composition, ⊞ the grid and ⏱ sets a timer. The gear opens AI settings.']];
+let tut=0;
+function tutSeen(){try{return localStorage.getItem('sc_tut')==='1'}catch(e){return false}}
+function drawTut(){const t=TUT[tut];$('tti').textContent=t[0];$('ttt').textContent=t[1];$('ttd').textContent=t[2];
+  $('tnext').textContent=tut<TUT.length-1?'Next':'Got it';$('tdots').textContent=TUT.map((_,i)=>i===tut?'●':'○').join(' ')}
+function showTut(){tut=0;drawTut();$('tutor').style.display='flex'}
+function closeTut(){$('tutor').style.display='none';try{localStorage.setItem('sc_tut','1')}catch(e){}}
+$('tnext').onclick=()=>{if(tut<TUT.length-1){tut++;drawTut()}else closeTut()};
+$('tskip').onclick=closeTut;
+$('tutlink').onclick=()=>{$('cfg').style.display='none';showTut()};
+$('tmr').onclick=()=>{tmr=tmr===0?3:tmr===3?10:0;$('tmr').textContent=tmr?tmr+'s':'⏱';$('tmr').classList.toggle('on',!!tmr);toast(tmr?'Timer: '+tmr+' seconds':'Timer off')};
+$('flip').onclick=async()=>{
+  if(!started)return;front=!front;
+  try{await openCam()}catch(e){front=!front;toast('Couldn’t switch camera');try{await openCam()}catch(_){}}
+  prev=null;setZoom(zoom);toast(front?'Selfie camera (mirrored preview)':'Back camera');
+};
 $('thumb').onclick=openTray;
 $('tclose').onclick=()=>$('tray').style.display='none';
-$('tshare').onclick=async()=>{
-  const f=shots.map((s,i)=>new File([s.blob],'shotcoach-'+(i+1)+'.jpg',{type:'image/jpeg'}));
-  try{if(navigator.canShare&&navigator.canShare({files:f}))await navigator.share({files:f});else toast('Press and hold a photo to save')}catch(e){}
-};
 </script></body></html>

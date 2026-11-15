@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ShotCoach">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icon.png">
+<title>ShotCoach</title>
+<style>
+:root{color-scheme:dark;--bg:#000;--fg:#fff;--y:#ffd60a;--g:#30d158;--chip:rgba(255,255,255,.14);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:16px -apple-system,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px;box-sizing:border-box}
+#stage{position:relative;width:min(100%,calc((100dvh - 230px)*.75));aspect-ratio:3/4;overflow:hidden;border-radius:14px;background:#111}
+video,#ov{position:absolute;inset:0;width:100%;height:100%}
+video{object-fit:cover;transform-origin:center}
+#hint{font-weight:600;min-height:24px;text-align:center}
+.row{display:flex;gap:10px;align-items:center;justify-content:center}
+button{font:inherit;color:var(--fg);background:var(--chip);border:0;border-radius:999px;padding:8px 16px}
+button.on{background:rgba(255,214,10,.35)}
+#shutter{width:72px;height:72px;padding:0;background:#fff;border:5px solid #000;box-shadow:0 0 0 4px #fff}
+#start{position:absolute;inset:0;margin:auto;height:56px;width:200px;background:var(--y);color:#000;font-weight:700}
+#shot{position:fixed;inset:0;background:#000e;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:9}
+#shot img{max-width:90%;max-height:75%;border-radius:10px}
+small{opacity:.6}
+</style></head><body>
+<div id="stage"><video id="v" playsinline muted></video><canvas id="ov"></canvas><button id="start">Start camera</button></div>
+<button id="safari" style="display:none;background:var(--y);color:#000;font-weight:600">Copy link</button>
+<div id="hint">Tap Start camera</div>
+<div class="row" id="zr"><button data-z="1" class="on">1x</button><button data-z="2">2x</button><button data-z="3">3x</button></div>
+<div class="row"><button id="ai">✨ AI assist</button><button id="shutter" aria-label="Shutter"></button><button id="flip" style="visibility:hidden">·</button></div>
+<small id="info">Local mode: works offline</small>
+<div id="shot"><img id="shotimg" alt=""><div>Press and hold the photo → Save to Photos</div><button id="close">Done</button></div>
+<script>
+const $=id=>document.getElementById(id),v=$('v'),ov=$('ov'),cx=ov.getContext('2d');
+const W=48,H=64,GW=12,GH=16,wk=document.createElement('canvas');wk.width=W;wk.height=H;
+const wx=wk.getContext('2d',{willReadFrequently:true});
+let zoom=1,tilt=0,box=null,aiBox=null,label='',tip='',state='search',alignedAt=0,hint='',
+    prev=null,sample=null,useAI=false,aiBusy=false,lastAi=0,lightTxt='',started=false;
+const PROMPT='You are a photography coach looking at a live camera frame. Pick the single best subject for a striking photo (light, lines, symmetry, colour). Reply with ONLY JSON: {"label":"2-4 words","box":[x,y,w,h],"tip":"max 6 words"}. box is normalized 0-1, top-left origin.';
+
+function vr(){const vw=v.videoWidth,vh=v.videoHeight;let sw=vw,sh=vh;
+  if(vw/vh>.75)sw=vh*.75;else sh=vw/.75;sw/=zoom;sh/=zoom;return[(vw-sw)/2,(vh-sh)/2,sw,sh]}
+
+$('start').onclick=async()=>{
+  try{
+    if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){
+      try{await DeviceOrientationEvent.requestPermission()}catch(e){}}
+    addEventListener('deviceorientation',e=>{if(e.gamma!=null)tilt=e.gamma});
+    const s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1440}}});
+    v.srcObject=s;await v.play();$('start').style.display='none';started=true;requestAnimationFrame(draw);
+  }catch(e){$('hint').textContent='Camera blocked. In Safari tap aA → Website Settings → Camera → Allow.'}
+};
+document.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>setZoom(+b.dataset.z));
+function setZoom(z){zoom=z;v.style.transform='scale('+z+')';aiBox=null;
+  document.querySelectorAll('[data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===z))}
+
+function getKey(){try{return localStorage.getItem('sc_key')||''}catch(e){return ''}}
+$('ai').onclick=()=>{
+  if(useAI){useAI=false;aiBox=null;$('ai').classList.remove('on');$('info').textContent='Local mode: works offline';return}
+  let k=getKey();
+  if(!k){k=(prompt('Paste your Anthropic API key (stored only on this phone)')||'').trim();if(!k)return;try{localStorage.setItem('sc_key',k)}catch(e){}}
+  useAI=true;sample=true;lastAi=0;$('ai').classList.add('on');$('info').textContent='AI mode: Claude picks the subject';
+};
+
+function analyse(d){
+  const n=W*H,g=new Float32Array(n);let mr=0,mg=0,mb=0,lum=0,clip=0;
+  for(let i=0;i<n;i++){const r=d[i*4],gg=d[i*4+1],b=d[i*4+2];g[i]=.299*r+.587*gg+.114*b;mr+=r;mg+=gg;mb+=b;lum+=g[i];if(g[i]>245)clip++}
+  mr/=n;mg/=n;mb/=n;lum/=n;
+  const grid=new Float32Array(GW*GH),bw=W/GW,bh=H/GH;
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;
+    const cd=Math.abs(d[i*4]-mr)+Math.abs(d[i*4+1]-mg)+Math.abs(d[i*4+2]-mb);
+    const c=Math.abs(g[i]*4-g[i-1]-g[i+1]-g[i-W]-g[i+W]);
+    const k=1-.6*Math.hypot(x/W-.5,y/H-.5);
+    grid[Math.floor(y/bh)*GW+Math.floor(x/bw)]+=(cd*.6+c*1.2+g[i]*.2)*k}
+  let pk=0,pi=0;grid.forEach((s,i)=>{if(s>pk){pk=s;pi=i}});
+  const seen=new Set([pi]),st=[pi];let x0=GW,x1=0,y0=GH,y1=0;
+  while(st.length){const i=st.pop(),x=i%GW,y=(i/GW)|0;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{const nx=x+a,ny=y+b,j=ny*GW+nx;
+      if(nx>=0&&ny>=0&&nx<GW&&ny<GH&&!seen.has(j)&&grid[j]>pk*.6){seen.add(j);st.push(j)}})}
+  const warm=mr/(mb+1);
+  lightTxt=lum<60?'dim light':clip/n>.08?'harsh highlights':(warm>1.15&&lum>90)?'warm golden light':'soft light';
+  const m=2;x0=Math.max(0,x0-(x1-x0<m?1:0));x1=Math.min(GW-1,x1+(x1-x0<m?1:0));
+  return{rect:{x:x0/GW,y:y0/GH,w:(x1-x0+1)/GW,h:(y1-y0+1)/GH},gray:g};
+}
+function track(g){
+  if(!prev||!aiBox)return;
+  const gx=Math.round(aiBox.x*W),gy=Math.round(aiBox.y*H),gw=Math.max(4,Math.round(aiBox.w*W)),gh=Math.max(4,Math.round(aiBox.h*H));
+  let best=1e18,bx=0,by=0;
+  for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){let s=0,c=0;
+    for(let y=0;y<gh;y+=2)for(let x=0;x<gw;x+=2){const px=gx+x,py=gy+y,qx=px+dx,qy=py+dy;
+      if(px<0||py<0||px>=W||py>=H||qx<0||qy<0||qx>=W||qy>=H)continue;
+      s+=Math.abs(prev[py*W+px]-g[qy*W+qx]);c++}
+    if(c>20){s/=c;if(s<best){best=s;bx=dx;by=dy}}}
+  aiBox.x=Math.min(1-aiBox.w,Math.max(0,aiBox.x+bx/W));aiBox.y=Math.min(1-aiBox.h,Math.max(0,aiBox.y+by/H));
+}
+async function askAI(){
+  if(aiBusy||!sample)return;aiBusy=true;
+  try{
+    const c=document.createElement('canvas');c.width=384;c.height=512;const[a,b,w,h]=vr();
+    c.getContext('2d').drawImage(v,a,b,w,h,0,0,384,512);
+    const b64=c.toDataURL('image/jpeg',.7).split(',')[1];
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':getKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:300,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:PROMPT}]}]})});
+    if(res.status===401){try{localStorage.removeItem('sc_key')}catch(e){}useAI=false;aiBox=null;$('ai').classList.remove('on');$('info').textContent='API key rejected. Tap AI assist to re-enter.';aiBusy=false;return}
+    const data=await res.json();
+    const j=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    aiBox={x:j.box[0],y:j.box[1],w:j.box[2],h:j.box[3]};label=j.label||'';tip=j.tip||'';
+  }catch(e){if(e&&e.code==='not_granted'){useAI=false;$('ai').classList.remove('on')}}
+  aiBusy=false;lastAi=Date.now();
+}
+function coach(raw){
+  if(!raw){state='search';hint='Looking for a great shot…';return}
+  box=box?{x:box.x+(raw.x-box.x)*.35,y:box.y+(raw.y-box.y)*.35,w:box.w+(raw.w-box.w)*.35,h:box.h+(raw.h-box.h)*.35}:{...raw};
+  const mx=box.x+box.w/2,my=box.y+box.h/2,tx=mx<.5?1/3:2/3,ty=my<.5?1/3:2/3,dx=tx-mx,dy=ty-my;
+  const ok=Math.abs(dx)<.05&&Math.abs(dy)<.05,p=[];
+  if(Math.abs(dx)>=.05)p.push(dx>0?'left':'right');
+  if(Math.abs(dy)>=.05)p.push(dy>0?'up':'down');
+  if(ok){if(!alignedAt)alignedAt=Date.now();state=Date.now()-alignedAt>600?'ready':'aligned'}else{alignedAt=0;state='adjust'}
+  hint=ok?(state==='ready'?(tip||lightTxt)+', stay there':'Framing your shot…'):'Move your phone '+p.join(' & ');
+  if(!label)label='best subject';
+}
+let last=0;
+function draw(t){
+  requestAnimationFrame(draw);
+  const dpr=devicePixelRatio||1,w=ov.clientWidth,h=ov.clientHeight;
+  if(ov.width!==w*dpr){ov.width=w*dpr;ov.height=h*dpr}
+  cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,w,h);
+  if(v.videoWidth&&t-last>180){last=t;
+    wx.drawImage(v,...vr(),0,0,W,H);const r=analyse(wx.getImageData(0,0,W,H).data);
+    if(useAI){track(r.gray);if(Date.now()-lastAi>3000)askAI();coach(aiBox)}
+    else{aiBox=null;label='best subject';coach(r.rect)}
+    prev=r.gray;$('hint').textContent=hint;
+    $('hint').style.color=(state==='aligned'||state==='ready')?'var(--g)':'var(--y)';
+  }
+  const col=(state==='aligned'||state==='ready')?'#30d158':'#ffd60a';
+  cx.strokeStyle='rgba(255,255,255,.25)';cx.lineWidth=.5;cx.beginPath();
+  for(let i=1;i<3;i++){cx.moveTo(w*i/3,0);cx.lineTo(w*i/3,h);cx.moveTo(0,h*i/3);cx.lineTo(w,h*i/3)}cx.stroke();
+  if(box){cx.strokeStyle=col;cx.lineWidth=3;cx.beginPath();cx.roundRect(box.x*w,box.y*h,box.w*w,box.h*h,10);cx.stroke();
+    cx.font='600 13px -apple-system,sans-serif';const tw=cx.measureText(label).width+14,ly=Math.min((box.y+box.h)*h+8,h-26);
+    cx.fillStyle='rgba(0,0,0,.55)';cx.beginPath();cx.roundRect(box.x*w+box.w*w/2-tw/2,ly,tw,22,11);cx.fill();
+    cx.fillStyle=col;cx.textAlign='center';cx.fillText(label,box.x*w+box.w*w/2,ly+15)}
+  cx.save();cx.translate(w/2,h/2);cx.rotate(-tilt*Math.PI/180);
+  cx.strokeStyle=Math.abs(tilt)<1.5?'#30d158':'#ffd60a';cx.lineWidth=2;cx.beginPath();cx.moveTo(-70,0);cx.lineTo(70,0);cx.stroke();cx.restore();
+}
+$('shutter').onclick=async()=>{
+  if(!started)return;const c=document.createElement('canvas');c.width=1440;c.height=1920;
+  c.getContext('2d').drawImage(v,...vr(),0,0,1440,1920);
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.92));
+  const f=new File([blob],'shotcoach.jpg',{type:'image/jpeg'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}}catch(e){if(e.name==='AbortError')return}
+  $('shotimg').src=URL.createObjectURL(blob);$('shot').style.display='flex';
+};
+$('close').onclick=()=>$('shot').style.display='none';
+const PAGE='https://claude.ai/artifact/EoynF55XBfLLm6UJVXx3Z8';
+$('safari').onclick=async()=>{
+  let ok=false;
+  try{await navigator.clipboard.writeText(PAGE);ok=true}catch(e){
+    try{const t=document.createElement('textarea');t.value=PAGE;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.focus();t.select();ok=document.execCommand('copy');t.remove()}catch(e2){}}
+  $('safari').textContent=ok?'Copied ✓ Paste into Safari':'Couldn’t copy';
+  setTimeout(()=>$('safari').textContent='Copy link',2500);
+};
+</script></body></html>

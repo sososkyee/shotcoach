@@ -54,7 +54,42 @@ button:active{transform:scale(.94)}
 input,select{font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid #444;background:#000;color:#fff}
 .row{display:flex;gap:10px;justify-content:center}
 small{opacity:.6}
-#imgs{overflow:auto;display:flex;flex-direction:column;gap:8px}#imgs img{width:100%;max-height:46dvh;object-fit:contain;background:#000;border-radius:10px}
+/* ---- Photos-style library + viewer ---- */
+.pg{position:fixed;inset:0;background:#000;z-index:20;display:none;flex-direction:column;color:#fff}
+.pg svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
+.top,.bot{position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-left:16px;padding-right:16px;z-index:3;transition:opacity .2s}
+.top{top:0;padding-top:calc(env(safe-area-inset-top,0px) + 8px)}
+.bot{bottom:0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+.cb,.pb,.tp,.cap{background:rgba(44,48,60,.5);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,.15);color:#fff;box-shadow:0 2px 14px rgba(0,0,0,.28)}
+.cb{width:48px;height:48px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.pb{height:48px;padding:0 18px;border-radius:999px;font-weight:600;font-size:16px;flex:0 0 auto}
+.tp{height:48px;border-radius:999px;flex:1;max-width:230px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;min-width:0}
+.tp b{font-size:16px;font-weight:600}.tp span{font-size:13px;opacity:.85}
+.cap{display:flex;height:48px;border-radius:999px;padding:0 6px;align-items:center;gap:2px;flex:0 0 auto}
+.cap button{background:none;width:46px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;color:#fff;border-radius:999px}
+#lgrid{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;align-content:start;padding:calc(env(safe-area-inset-top,0px) + 68px) 0 calc(env(safe-area-inset-bottom,0px) + 40px);-webkit-overflow-scrolling:touch}
+#lib.sel #lgrid{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 90px)}
+.cell{position:relative;aspect-ratio:1;background:#1c1c1e;overflow:hidden}
+.cell img{width:100%;height:100%;object-fit:cover;display:block}
+.cell .fv{position:absolute;left:5px;bottom:4px;color:#fff;filter:drop-shadow(0 1px 3px #000a)}
+.cell .fv svg{width:15px;height:15px;fill:currentColor;stroke:none}
+.cell .ck{position:absolute;right:6px;bottom:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25);display:none;box-sizing:border-box}
+#lib.sel .ck{display:block}.cell.on .ck{background:#0a84ff;border-color:#0a84ff;box-shadow:inset 0 0 0 3px #fff0}
+.cell.on::after{content:"✓";position:absolute;right:6px;bottom:6px;width:24px;height:24px;line-height:24px;text-align:center;font-size:15px;font-weight:700}
+#lbot{display:none}#lib.sel #lbot{display:flex}#lbot button:disabled{opacity:.4}
+#lempty{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:22px;font-weight:600;text-align:center;padding:30px}
+#lempty small{font-size:15px;font-weight:400;opacity:.6}
+#vs{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#vs::-webkit-scrollbar{display:none}
+.sl{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center}
+.sl img{width:100%;height:100%;object-fit:contain}
+#viewer.hide .top,#viewer.hide .bot{opacity:0;pointer-events:none}
+#vheart.on{color:#ff375f}#vheart.on svg{fill:currentColor}
+#sheet{background:rgba(0,0,0,.45);z-index:40;justify-content:flex-end;padding:12px 10px calc(env(safe-area-inset-bottom,0px) + 10px);box-sizing:border-box}
+#shbox{background:rgba(40,40,44,.97);border-radius:26px;padding:6px 6px;max-height:80dvh;overflow:auto}
+.sb{display:block;width:100%;text-align:center;font-size:19px;padding:16px;background:none;border-radius:0;color:#0a84ff}
+.sb.red{color:#ff453a}.sb+.sb{border-top:1px solid rgba(255,255,255,.1)}
+.inf{padding:16px 18px 8px;line-height:1.5;font-size:15px}.inf b{font-size:17px}.inf .big{font-size:44px;font-weight:700;line-height:1.1;margin:6px 0}.inf .big small{font-size:18px;opacity:.6}.inf p{margin:8px 0 0;opacity:.8}
 </style></head><body>
 <div id="stage"><video id="v" playsinline muted autoplay></video><div id="tint"></div><canvas id="ov"></canvas>
 <div id="flash"></div><div id="cd"></div>
@@ -82,8 +117,13 @@ small{opacity:.6}
 <small id="tutlink" style="text-decoration:underline;text-align:center">Replay tutorial</small>
 <button id="sndb">🔔 Sounds: on</button>
 <div class="row"><button id="csave" style="background:var(--y);color:#000;font-weight:600">Save &amp; turn on</button><button id="ccancel">Cancel</button></div></div></div>
-<div id="tray" class="ov"><div class="card"><h3 id="tt">Photos</h3><div id="imgs"></div><small>Tap Save to share, or press and hold a photo → Save to Photos.</small>
-<div class="row"><button id="tclose" style="background:var(--y);color:#000;font-weight:600">Done</button></div></div></div>
+<div id="lib" class="pg"><div class="top"><button class="cb" id="lback" data-ic="back" aria-label="Back"></button><div class="tp"><b>Recents</b><span id="lsub"></span></div><button class="pb" id="lsel">Select</button></div>
+<div id="lgrid"></div><div id="lempty">No Photos<small>Photos you take with ShotCoach appear here.</small></div>
+<div class="bot" id="lbot"><button class="cb" id="lshare" data-ic="share" aria-label="Share"></button><button class="cb" id="ltrash" data-ic="trash" aria-label="Delete"></button></div></div>
+<div id="viewer" class="pg"><div id="vs"></div>
+<div class="top"><button class="cb" id="vback" data-ic="back" aria-label="Back"></button><div class="tp"><b id="vday"></b><span id="vtime"></span></div><div class="cap"><button id="vlib" data-ic="lib" aria-label="Library"></button><button id="vmore" data-ic="more" aria-label="More"></button></div></div>
+<div class="bot"><button class="cb" id="vshare" data-ic="share" aria-label="Share"></button><div class="cap"><button id="vheart" data-ic="heart" aria-label="Favorite"></button><button id="vinfo" data-ic="info" aria-label="Info"></button></div><button class="cb" id="vtrash" data-ic="trash" aria-label="Delete"></button></div></div>
+<div id="sheet" class="pg"><div id="shbox"></div></div>
 
 <div id="sunp" class="ov"><div class="card"><h3>☀️ Sun &amp; light</h3><div id="sunbody"></div><small>Calculated on your phone from your location and the time. Nothing is sent anywhere.</small>
 <div class="row"><button id="sunref">Refresh</button><button id="sunclose" style="background:var(--y);color:#000;font-weight:600">Done</button></div></div></div>
@@ -123,17 +163,39 @@ function vr(){const vw=v.videoWidth,vh=v.videoHeight,A=ov.clientWidth/ov.clientH
 function toast(m,ms=2200){const t=$('toast');t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity=0,ms)}
 function info(m){toast(m,3000)}
 
-$('start').onclick=async()=>{
+let oriOk=false,oriAsked=false,oriHooked=false;
+function hookOri(){if(oriHooked)return;oriHooked=true;addEventListener('deviceorientation',e=>{if(e.gamma!=null){tiltS+=(e.gamma-tiltS)*.2;ori=[e.beta||0,e.gamma||0,e.alpha||0]}})}
+async function unlock(){ // needs a real tap on iOS: audio + motion permission. Safe to call again and again.
+  if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}else if(ac.state==='suspended'){try{ac.resume()}catch(e){}}
+  if(!oriAsked&&window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){
+    try{const r=await DeviceOrientationEvent.requestPermission();oriAsked=true;oriOk=r==='granted'}catch(e){}}
+}
+hookOri();
+addEventListener('touchend',unlock,{passive:true});addEventListener('click',unlock);
+async function begin(auto){
+  if(started)return;
+  const b=$('start'),old=b.textContent;b.textContent='Starting…';
   try{
-    try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){} // must be created inside the tap
-    if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){try{await DeviceOrientationEvent.requestPermission()}catch(e){}}
-    addEventListener('deviceorientation',e=>{if(e.gamma!=null){tiltS+=(e.gamma-tiltS)*.2;ori=[e.beta||0,e.gamma||0,e.alpha||0]}});
-    await openCam();$('welcome').style.display='none';$('steady').style.display='block';started=true;$('pill').textContent='Looking for a great shot…';
+    await openCam();
+    try{localStorage.setItem('sc_cam','1')}catch(e){} // remember that the camera was allowed, so next launch skips the Start screen
+    try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){} // ask iOS not to evict saved photos
+    $('welcome').style.display='none';$('steady').style.display='block';started=true;$('pill').textContent='Looking for a great shot…';
     requestAnimationFrame(draw);keepAwake();if(!tutSeen())showTut();
-  }catch(e){$('welcome').querySelector('p').textContent='Camera blocked. In Safari tap aA → Website Settings → Camera → Allow, then reload.'}
-};
+  }catch(e){
+    b.textContent=old;
+    try{localStorage.removeItem('sc_cam')}catch(_){}
+    if(!auto)$('welcome').querySelector('p').textContent='Camera blocked. In Safari tap aA → Website Settings → Camera → Allow, then reload.'}
+}
+$('start').onclick=async()=>{await unlock();begin(false)};
+(async()=>{ // already allowed before? start straight away
+  let ok=false;
+  try{if(navigator.permissions&&navigator.permissions.query){ok=(await navigator.permissions.query({name:'camera'})).state==='granted'}}catch(e){}
+  if(!ok){try{ok=localStorage.getItem('sc_cam')==='1'}catch(e){}}
+  if(ok)begin(true);
+})();
 async function keepAwake(){try{if(navigator.wakeLock)await navigator.wakeLock.request('screen')}catch(e){}}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&started){v.play();keepAwake()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden||!started)return;
+  const t=stream&&stream.getVideoTracks()[0];if(!t||t.readyState==='ended')openCam().catch(()=>{});else v.play();keepAwake()});
 document.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>setZoom(+b.dataset.z));
 async function openCam(){
   if(stream)stream.getTracks().forEach(t=>t.stop());
@@ -405,14 +467,15 @@ async function pickBest(){let best=null,bv=-1;
   return best}
 let db=null;
 function idb(){return new Promise(res=>{try{const r=indexedDB.open('shotcoach',1);r.onupgradeneeded=()=>r.result.createObjectStore('shots',{keyPath:'id',autoIncrement:true});r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch(e){res(null)}})}
-function dbPut(rec){return new Promise(res=>{if(!db)return res(rec);try{const q=db.transaction('shots','readwrite').objectStore('shots').add({blob:rec.blob,sc:rec.sc,t:rec.t});q.onsuccess=()=>{rec.id=q.result;res(rec)};q.onerror=()=>res(rec)}catch(e){res(rec)}})}
+function dbPut(rec){return new Promise(res=>{if(!db)return res(rec);try{const q=db.transaction('shots','readwrite').objectStore('shots').add({blob:rec.blob,sc:rec.sc,t:rec.t,fav:!!rec.fav});q.onsuccess=()=>{rec.id=q.result;res(rec)};q.onerror=()=>res(rec)}catch(e){res(rec)}})}
+function dbSet(s){try{if(db&&s.id!=null)db.transaction('shots','readwrite').objectStore('shots').put({id:s.id,blob:s.blob,sc:s.sc,t:s.t,fav:!!s.fav})}catch(e){}}
 function dbDel(id){try{if(db&&id!=null)db.transaction('shots','readwrite').objectStore('shots').delete(id)}catch(e){}}
 function refreshThumb(){if(shots.length){$('thumb').style.backgroundImage='url('+shots[0].url+')';$('cnt').style.display='block';$('cnt').textContent=shots.length}
   else{$('thumb').style.backgroundImage='none';$('cnt').style.display='none'}}
 async function loadShots(){db=await idb();if(!db)return;
   try{const all=await new Promise(res=>{const q=db.transaction('shots').objectStore('shots').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])});
     all.sort((a,b)=>b.id-a.id);
-    for(const r of all.slice(0,MAXS))shots.push({id:r.id,blob:r.blob,sc:r.sc,t:r.t,url:URL.createObjectURL(r.blob)});
+    for(const r of all.slice(0,MAXS))shots.push({id:r.id,blob:r.blob,sc:r.sc,t:r.t,fav:!!r.fav,url:URL.createObjectURL(r.blob)});
     for(const r of all.slice(MAXS))dbDel(r.id);refreshThumb()}catch(e){}}
 async function capture(manual){
   if(!started||capBusy)return;capBusy=true;lastShot=Date.now();sfx('shutter');
@@ -427,26 +490,76 @@ async function capture(manual){
     shots.unshift(rec);await dbPut(rec);
     while(shots.length>MAXS){const o=shots.pop();URL.revokeObjectURL(o.url);dbDel(o.id)}
     refreshThumb();
-    if(manual)openTray();else toast((sc.blurry?'⚠️ Captured, but it looks blurry':'📸 Captured · '+Math.round(sc.total)+'/10')+' · tap the thumbnail',3000);
+    if(manual&&sc.blurry){openViewer(shots.length-1);showInfo(rec)}else toast('📸 Captured · '+Math.round(sc.total)+'/10 · tap the thumbnail',3000);
   }finally{capBusy=false}
 }
-async function shareOne(s){const f=new File([s.blob],'shotcoach-'+s.t+'.jpg',{type:'image/jpeg'});
-  try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else toast('Press and hold the photo to save')}catch(e){}}
-function removeShot(s,close){const i=shots.indexOf(s);if(i<0)return;shots.splice(i,1);URL.revokeObjectURL(s.url);dbDel(s.id);refreshThumb();
-  if(close||!shots.length)$('tray').style.display='none';else openTray()}
-function openTray(){
-  if(!shots.length)return;$('tt').textContent='Photos ('+shots.length+')';
-  const box=$('imgs');box.innerHTML='';
-  shots.forEach(s=>{
-    const d=document.createElement('div');d.className='shot';const im=new Image();im.src=s.url;d.appendChild(im);
-    if(s.sc){const sc=s.sc,e=document.createElement('div');e.className='sc';
-      e.innerHTML='<b>'+Math.round(sc.total)+'/10</b> · Sharp '+Math.round(sc.sharp)+' · Exposure '+Math.round(sc.expo)+' · Framing '+Math.round(sc.fram)+(sc.burst?' · best of 5':'')+'<br><small>'+(sc.blurry?'⚠️ Looks blurry. ':'')+sc.tip+'</small>';d.appendChild(e)}
-    const r=document.createElement('div');r.className='row';
-    const sv=document.createElement('button');sv.textContent='Save / Share';sv.style.cssText='background:var(--y);color:#000;font-weight:600';sv.onclick=()=>shareOne(s);r.appendChild(sv);
-    const dl=document.createElement('button');dl.textContent=s.sc&&s.sc.blurry?'🔁 Retake':'🗑 Delete';dl.onclick=()=>removeShot(s,!!(s.sc&&s.sc.blurry));r.appendChild(dl);
-    d.appendChild(r);box.appendChild(d)});
-  $('tray').style.display='flex';
-}
+async function shareMany(list){const fs=list.map(s=>new File([s.blob],'shotcoach-'+s.t+'.jpg',{type:'image/jpeg'}));
+  try{if(navigator.canShare&&navigator.canShare({files:fs}))await navigator.share({files:fs});else toast('Press and hold a photo to save')}catch(e){}}
+const shareOne=s=>shareMany([s]);
+/* ---- Photos-style library (grid) and viewer ---- */
+const IC={back:'<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+ share:'<svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4M7 10H6a1 1 0 0 0-1 1v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a1 1 0 0 0-1-1h-1"/></svg>',
+ heart:'<svg viewBox="0 0 24 24"><path d="M12 20.5S3.5 15 3.5 9A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8.5 2c0 6-8.5 11.5-8.5 11.5z"/></svg>',
+ heartf:'<svg viewBox="0 0 24 24"><path d="M12 20.5S3.5 15 3.5 9A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8.5 2c0 6-8.5 11.5-8.5 11.5z"/></svg>',
+ info:'<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8.5"/><path d="M12 12.5v4.5M12 9.2h.01"/><path d="M4.5 2.5v4M2.5 4.5h4" stroke-width="1.6"/></svg>',
+ trash:'<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg>',
+ more:'<svg viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+ lib:'<svg viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M3 17l4-4 4 4 2-2 4 4"/></svg>'};
+document.querySelectorAll('[data-ic]').forEach(e=>e.innerHTML=IC[e.dataset.ic]);
+let selMode=false,selSet=new Set(),vi=0,vList=[];
+const order=()=>shots.slice().reverse(); // oldest first, newest at the bottom, like Photos
+const vis=id=>$(id).style.display==='flex';
+function dayLbl(t){const d=new Date(t),n=new Date(),z=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()),df=Math.round((z(n)-z(d))/864e5);
+  return df===0?'Today':df===1?'Yesterday':df<7?d.toLocaleDateString([],{weekday:'long'}):d.toLocaleDateString([],{day:'numeric',month:'short',year:'numeric'})}
+const timeLbl=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+function sheet(items){const b=$('shbox');b.innerHTML='';
+  items.forEach(it=>{const x=document.createElement('button');x.className='sb'+(it.red?' red':'');x.textContent=it.t;x.onclick=()=>{closeSheet();it.fn&&it.fn()};b.appendChild(x)});
+  const c=document.createElement('button');c.className='sb';c.style.fontWeight='600';c.textContent='Cancel';c.onclick=closeSheet;b.appendChild(c);$('sheet').style.display='flex'}
+function closeSheet(){$('sheet').style.display='none'}
+$('sheet').onclick=e=>{if(e.target===$('sheet'))closeSheet()};
+function showInfo(s){const b=$('shbox'),sc=s.sc,d=document.createElement('div');d.className='inf';b.innerHTML='';
+  d.innerHTML='<b>'+dayLbl(s.t)+' · '+timeLbl(s.t)+'</b>'+(sc?'<div class="big">'+Math.round(sc.total)+'<small>/10</small></div>Sharp '+Math.round(sc.sharp)+' · Exposure '+Math.round(sc.expo)+' · Framing '+Math.round(sc.fram)+(sc.burst?' · best of 5':'')+'<p>'+(sc.blurry?'⚠️ Looks blurry. ':'')+sc.tip+'</p>':'<p>No coaching score for this photo.</p>');
+  b.appendChild(d);
+  const x=document.createElement('button');x.className='sb';x.style.fontWeight='600';x.textContent=(sc&&sc.blurry)?'Keep':'Done';x.onclick=closeSheet;b.appendChild(x);
+  if(sc&&sc.blurry){const r=document.createElement('button');r.className='sb red';r.textContent='Delete & Retake';r.onclick=()=>{closeSheet();del([s]);closeViewer()};b.appendChild(r)}
+  $('sheet').style.display='flex'}
+function del(list){list.forEach(s=>{const i=shots.indexOf(s);if(i<0)return;shots.splice(i,1);URL.revokeObjectURL(s.url);dbDel(s.id)});
+  refreshThumb();selSet.clear();
+  if(vis('viewer')){if(!shots.length)closeViewer();else openViewer(Math.min(vi,shots.length-1))}
+  if(vis('lib')){selMode=selMode&&shots.length>0;renderLib()}}
+const askDel=list=>sheet([{t:list.length>1?'Delete '+list.length+' Photos':'Delete Photo',red:1,fn:()=>del(list)}]);
+function openLib(){selMode=false;selSet.clear();renderLib();$('lib').style.display='flex';const g=$('lgrid');g.scrollTop=g.scrollHeight}
+function closeLib(){$('lib').style.display='none';selMode=false}
+function updateSel(){const n=selSet.size;$('lsub').textContent=selMode?(n?n+' Selected':'Select Items'):shots.length+(shots.length===1?' Photo':' Photos');
+  $('lshare').disabled=$('ltrash').disabled=!n}
+function renderLib(){const g=$('lgrid'),L=order();g.innerHTML='';$('lib').classList.toggle('sel',selMode);
+  $('lempty').style.display=L.length?'none':'flex';$('lsel').style.visibility=L.length?'visible':'hidden';$('lsel').textContent=selMode?'Cancel':'Select';
+  L.forEach((s,i)=>{const c=document.createElement('div');c.className='cell'+(selSet.has(s)?' on':'');
+    const im=new Image();im.src=s.url;im.decoding='async';c.appendChild(im);
+    if(s.fav){const f=document.createElement('span');f.className='fv';f.innerHTML=IC.heartf;c.appendChild(f)}
+    const k=document.createElement('span');k.className='ck';c.appendChild(k);
+    c.onclick=()=>{if(selMode){selSet.has(s)?selSet.delete(s):selSet.add(s);c.classList.toggle('on');updateSel()}else openViewer(i)};
+    g.appendChild(c)});
+  updateSel()}
+$('lsel').onclick=()=>{selMode=!selMode;selSet.clear();const st=$('lgrid').scrollTop;renderLib();$('lgrid').scrollTop=st};
+$('lback').onclick=closeLib;
+$('lshare').onclick=()=>{if(selSet.size)shareMany([...selSet])};
+$('ltrash').onclick=()=>{if(selSet.size)askDel([...selSet])};
+const curShot=()=>vList[vi];
+function vSync(){const s=curShot();if(!s)return;$('vday').textContent=dayLbl(s.t);$('vtime').textContent=timeLbl(s.t);$('vheart').classList.toggle('on',!!s.fav)}
+function openViewer(i){vList=order();const box=$('vs');box.innerHTML='';
+  vList.forEach(s=>{const d=document.createElement('div');d.className='sl';const im=new Image();im.src=s.url;d.appendChild(im);box.appendChild(d)});
+  $('viewer').classList.remove('hide');$('viewer').style.display='flex';vi=i;box.scrollLeft=i*box.clientWidth;vSync()}
+function closeViewer(){$('viewer').style.display='none';if(vis('lib')){const st=$('lgrid').scrollTop;renderLib();$('lgrid').scrollTop=st}}
+$('vs').addEventListener('scroll',()=>{const b=$('vs'),n=Math.round(b.scrollLeft/(b.clientWidth||1));if(n!==vi&&n>=0&&n<vList.length){vi=n;vSync()}},{passive:true});
+$('vs').onclick=()=>$('viewer').classList.toggle('hide');
+$('vback').onclick=closeViewer;
+$('vlib').onclick=()=>{closeViewer();if(!vis('lib'))openLib()};
+$('vheart').onclick=()=>{const s=curShot();if(!s)return;s.fav=!s.fav;dbSet(s);vSync()};
+$('vshare').onclick=()=>{const s=curShot();if(s)shareOne(s)};
+$('vtrash').onclick=()=>{const s=curShot();if(s)askDel([s])};
+$('vinfo').onclick=()=>{const s=curShot();if(s)showInfo(s)};
+$('vmore').onclick=()=>{const s=curShot();if(s)sheet([{t:'Save / Share',fn:()=>shareOne(s)},{t:'Photo Info',fn:()=>showInfo(s)},{t:'Delete Photo',red:1,fn:()=>askDel([s])}])};
 $('burstb').onclick=()=>{burstOn=!burstOn;$('burstb').classList.toggle('on',burstOn);toast(burstOn?'📷 Burst on: shoots 5, keeps the sharpest':'Burst off',2500)};
 loadShots();
 function showCd(n){const e=$('cd');e.textContent=n;e.style.display='flex'}
@@ -534,6 +647,5 @@ $('flip').onclick=async()=>{
   try{await openCam()}catch(e){front=!front;toast('Couldn’t switch camera');try{await openCam()}catch(_){}}
   prev=null;setZoom(zoom);toast(front?'Selfie camera (mirrored preview)':'Back camera');
 };
-$('thumb').onclick=openTray;
-$('tclose').onclick=()=>$('tray').style.display='none';
+$('thumb').onclick=openLib;
 </script></body></html>

@@ -24,19 +24,30 @@ button.on{background:rgba(255,214,10,.35)}
 #shot{position:fixed;inset:0;background:#000e;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:9}
 #shot img{max-width:90%;max-height:75%;border-radius:10px}
 small{opacity:.6}
+#cfg{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:10}
+.card{background:#1c1c1e;border-radius:16px;padding:16px;width:min(92%,380px);display:flex;flex-direction:column;gap:10px}
+.card h3{margin:0}
+input,select{font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid #444;background:#000;color:#fff}
 </style></head><body>
 <div id="stage"><video id="v" playsinline muted></video><canvas id="ov"></canvas><button id="start">Start camera</button></div>
 <button id="safari" style="display:none;background:var(--y);color:#000;font-weight:600">Copy link</button>
 <div id="hint">Tap Start camera</div>
 <div class="row" id="zr"><button data-z="1" class="on">1x</button><button data-z="2">2x</button><button data-z="3">3x</button></div>
-<div class="row"><button id="ai">✨ AI assist</button><button id="shutter" aria-label="Shutter"></button><button id="flip" style="visibility:hidden">·</button></div>
+<div class="row"><button id="ai">✨ AI assist</button><button id="shutter" aria-label="Shutter"></button><button id="gear" aria-label="AI settings">⚙️</button></div>
 <small id="info">Local mode: works offline</small>
+<div id="cfg"><div class="card"><h3>AI provider</h3>
+<select id="cp"><option value="gemini">Google Gemini</option><option value="anthropic">Anthropic Claude</option><option value="openai">OpenAI-compatible (OpenAI, OpenRouter, Groq, Ollama…)</option></select>
+<input id="ck" type="password" placeholder="API key" autocomplete="off">
+<input id="cm" placeholder="Model (must support images)" autocapitalize="off" autocorrect="off">
+<input id="cu" placeholder="Base URL" autocapitalize="off" autocorrect="off">
+<small id="cs"></small>
+<div class="row"><button id="csave" class="on">Save &amp; turn on</button><button id="ccancel">Cancel</button></div></div></div>
 <div id="shot"><img id="shotimg" alt=""><div>Press and hold the photo → Save to Photos</div><button id="close">Done</button></div>
 <script>
 const $=id=>document.getElementById(id),v=$('v'),ov=$('ov'),cx=ov.getContext('2d');
 const W=48,H=64,GW=12,GH=16,wk=document.createElement('canvas');wk.width=W;wk.height=H;
 const wx=wk.getContext('2d',{willReadFrequently:true});
-let zoom=1,tilt=0,box=null,aiBox=null,label='',tip='',state='search',alignedAt=0,hint='',
+let aiGap=5000,zoom=1,tilt=0,box=null,aiBox=null,label='',tip='',state='search',alignedAt=0,hint='',
     prev=null,sample=null,useAI=false,aiBusy=false,lastAi=0,lightTxt='',started=false;
 const PROMPT='You are a photography coach looking at a live camera frame. Pick the single best subject for a striking photo (light, lines, symmetry, colour). Reply with ONLY JSON: {"label":"2-4 words","box":[x,y,w,h],"tip":"max 6 words"}. box is normalized 0-1, top-left origin.';
 
@@ -56,13 +67,22 @@ document.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>setZoom(+b.datase
 function setZoom(z){zoom=z;v.style.transform='scale('+z+')';aiBox=null;
   document.querySelectorAll('[data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===z))}
 
-function getKey(){try{return localStorage.getItem('sc_key')||''}catch(e){return ''}}
-$('ai').onclick=()=>{
-  if(useAI){useAI=false;aiBox=null;$('ai').classList.remove('on');$('info').textContent='Local mode: works offline';return}
-  let k=getKey();
-  if(!k){k=(prompt('Paste your Anthropic API key (stored only on this phone)')||'').trim();if(!k)return;try{localStorage.setItem('sc_key',k)}catch(e){}}
-  useAI=true;sample=true;lastAi=0;$('ai').classList.add('on');$('info').textContent='AI mode: Claude picks the subject';
-};
+const DEF={gemini:{model:'gemini-flash-lite-latest',url:'',hint:'Free key at aistudio.google.com'},anthropic:{model:'claude-haiku-5-5',url:'',hint:'Key from console.anthropic.com (paid per use)'},openai:{model:'gpt-4o-mini',url:'https://api.openai.com/v1',hint:'Any OpenAI-style endpoint: OpenRouter https://openrouter.ai/api/v1, Groq https://api.groq.com/openai/v1, Together, local Ollama… Pick a model that accepts images.'}};
+const PN={gemini:'Gemini',anthropic:'Claude',openai:'AI'};
+function store(){try{return JSON.parse(localStorage.getItem('sc_cfg2')||'{}')}catch(e){return {}}}
+function save(o){try{localStorage.setItem('sc_cfg2',JSON.stringify(o))}catch(e){}}
+function active(){const o=store();return o.p&&o.by&&o.by[o.p]&&o.by[o.p].key?Object.assign({p:o.p},o.by[o.p]):null}
+function show(p){const o=store(),t=(o.by&&o.by[p])||{};$('cp').value=p;$('ck').value=t.key||'';$('cm').value=t.model||DEF[p].model;$('cu').value=t.url||DEF[p].url;$('cu').style.display=p==='openai'?'':'none';$('cs').textContent=DEF[p].hint}
+function openCfg(){show(store().p||'gemini');$('cfg').style.display='flex'}
+function setAI(on){useAI=on;aiBox=null;lastAi=0;aiGap=5000;$('ai').classList.toggle('on',on);
+  $('info').textContent=on?'AI mode: '+PN[active().p]+' picks the subject':'Local mode: works offline'}
+$('cp').onchange=()=>show($('cp').value);
+$('gear').onclick=openCfg;
+$('ccancel').onclick=()=>$('cfg').style.display='none';
+$('csave').onclick=()=>{const p=$('cp').value,o=store();o.p=p;o.by=o.by||{};
+  o.by[p]={key:$('ck').value.trim(),model:$('cm').value.trim()||DEF[p].model,url:$('cu').value.trim()||DEF[p].url};
+  save(o);$('cfg').style.display='none';if(o.by[p].key)setAI(true)};
+$('ai').onclick=()=>{if(useAI)return setAI(false);if(!active())return openCfg();setAI(true)};
 
 function analyse(d){
   const n=W*H,g=new Float32Array(n);let mr=0,mg=0,mb=0,lum=0,clip=0;
@@ -95,18 +115,39 @@ function track(g){
     if(c>20){s/=c;if(s<best){best=s;bx=dx;by=dy}}}
   aiBox.x=Math.min(1-aiBox.w,Math.max(0,aiBox.x+bx/W));aiBox.y=Math.min(1-aiBox.h,Math.max(0,aiBox.y+by/H));
 }
+async function callAI(c,b64){
+  let res,get;
+  if(c.p==='gemini'){
+    res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+c.model+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':c.key},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:b64}},{text:PROMPT}]}],generationConfig:{responseMimeType:'application/json',maxOutputTokens:1024}})});
+    get=d=>d.candidates[0].content.parts[0].text;
+  }else if(c.p==='anthropic'){
+    res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:c.model,max_tokens:300,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:PROMPT}]}]})});
+    get=d=>d.content[0].text;
+  }else{
+    res=await fetch(c.url.replace(/\/+$/,'')+'/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+c.key},body:JSON.stringify({model:c.model,max_tokens:500,messages:[{role:'user',content:[{type:'text',text:PROMPT},{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b64}}]}]})});
+    get=d=>d.choices[0].message.content;
+  }
+  const d=await res.json().catch(()=>({}));
+  if(!res.ok){const m=d.error&&(d.error.message||d.error);const e=new Error(String(m||('HTTP '+res.status)));e.status=res.status;throw e}
+  return get(d);
+}
 async function askAI(){
-  if(aiBusy||!sample)return;aiBusy=true;
+  const c=active();if(aiBusy||!useAI||!c)return;aiBusy=true;
   try{
-    const c=document.createElement('canvas');c.width=384;c.height=512;const[a,b,w,h]=vr();
-    c.getContext('2d').drawImage(v,a,b,w,h,0,0,384,512);
-    const b64=c.toDataURL('image/jpeg',.7).split(',')[1];
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':getKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-5-5',max_tokens:300,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:PROMPT}]}]})});
-    if(res.status===401){try{localStorage.removeItem('sc_key')}catch(e){}useAI=false;aiBox=null;$('ai').classList.remove('on');$('info').textContent='API key rejected. Tap AI assist to re-enter.';aiBusy=false;return}
-    const data=await res.json();
-    const j=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    const cv=document.createElement('canvas');cv.width=384;cv.height=512;const[a,b,w,h]=vr();
+    cv.getContext('2d').drawImage(v,a,b,w,h,0,0,384,512);
+    const txt=await callAI(c,cv.toDataURL('image/jpeg',.7).split(',')[1]);
+    const j=JSON.parse(txt.match(/\{[\s\S]*\}/)[0]);
+    if(!Array.isArray(j.box)||j.box.length!==4)throw new SyntaxError('bad box');
     aiBox={x:j.box[0],y:j.box[1],w:j.box[2],h:j.box[3]};label=j.label||'';tip=j.tip||'';
-  }catch(e){if(e&&e.code==='not_granted'){useAI=false;$('ai').classList.remove('on')}}
+  }catch(e){
+    const m=String(e.message||e).slice(0,100);
+    if(e.status===429){aiGap=Math.min(aiGap*2,30000);$('info').textContent='Rate limited, slowing down…'}
+    else if(e.status===401||e.status===403){setAI(false);$('info').textContent='Key rejected: '+m}
+    else if(e.status){setAI(false);$('info').textContent='AI error: '+m}
+    else if(e.name==='SyntaxError')$('info').textContent='AI reply unreadable, retrying…';
+    else $('info').textContent='Couldn’t reach the AI. Check signal; some providers block browser calls.';
+  }
   aiBusy=false;lastAi=Date.now();
 }
 function coach(raw){
@@ -128,7 +169,7 @@ function draw(t){
   cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,w,h);
   if(v.videoWidth&&t-last>180){last=t;
     wx.drawImage(v,...vr(),0,0,W,H);const r=analyse(wx.getImageData(0,0,W,H).data);
-    if(useAI){track(r.gray);if(Date.now()-lastAi>3000)askAI();coach(aiBox)}
+    if(useAI){track(r.gray);if(Date.now()-lastAi>aiGap)askAI();coach(aiBox)}
     else{aiBox=null;label='best subject';coach(r.rect)}
     prev=r.gray;$('hint').textContent=hint;
     $('hint').style.color=(state==='aligned'||state==='ready')?'var(--g)':'var(--y)';

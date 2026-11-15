@@ -13,9 +13,9 @@
 *{-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:#000;color:#fff;font:16px -apple-system,system-ui,sans-serif;overflow:hidden}
 body{display:flex;flex-direction:column;align-items:center;gap:10px;padding:6px 8px;box-sizing:border-box}
-#stage{position:relative;width:min(100%,calc((100dvh - 190px)*.75));aspect-ratio:3/4;overflow:hidden;border-radius:22px;background:#111}
+#stage{position:relative;width:100%;flex:1;min-height:0;overflow:hidden;border-radius:22px;background:#111}
 video,#ov{position:absolute;inset:0;width:100%;height:100%}
-video{object-fit:cover;transform-origin:center;transition:transform .25s ease}
+video{object-fit:cover;transform-origin:center;transition:transform .25s ease,filter .5s ease}
 .glass{background:var(--glass);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:999px}
 #pill{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:9px 16px;font-weight:600;font-size:15px;white-space:nowrap;max-width:88%;overflow:hidden;text-overflow:ellipsis;transition:color .25s}
 #pill.ok{color:var(--g)}#pill.no{color:var(--y)}
@@ -54,7 +54,7 @@ small{opacity:.6}
 <div id="pill" class="glass no">Tap Start</div><div id="lightpill" class="glass"></div>
 <button id="gear" class="glass" aria-label="AI settings">⚙️</button>
 <div id="toast" class="glass"></div>
-<div id="zr" class="glass"><button data-z="1" class="on">1x</button><button data-z="2">2x</button><button data-z="3">3x</button></div>
+<div id="zr" class="glass"><button data-z="1" class="on">1x</button><button data-z="2">2x</button><button data-z="3">3x</button><button id="auto" title="Auto-shoot">⚡</button><button id="enh" class="on" title="Auto-enhance">🌓</button></div>
 <div id="welcome"><h1>ShotCoach</h1><p>Point at a scene, follow the arrow, and shoot when everything turns green.</p><button id="start">Start camera</button><div id="tipi"></div></div></div>
 <div id="bar">
   <button id="thumb" aria-label="Photos"><span id="cnt" style="display:none">0</span></button>
@@ -63,8 +63,6 @@ small{opacity:.6}
     <button id="ai" class="tg">✨<span>AI</span></button>
   </div>
 </div>
-<div class="row"><button id="auto" class="tg" style="flex-direction:row;gap:6px;padding:6px 14px">⚡ Auto-shoot: off</button></div>
-<div id="info">Local mode: works offline</div>
 
 <div id="cfg" class="ov"><div class="card"><h3>AI provider</h3>
 <select id="cp"><option value="gemini">Google Gemini</option><option value="anthropic">Anthropic Claude</option><option value="openai">OpenAI-compatible (OpenAI, OpenRouter, Groq…)</option></select>
@@ -82,23 +80,23 @@ const W=48,H=64,GW=12,GH=16,wk=document.createElement('canvas');wk.width=W;wk.he
 const wx=wk.getContext('2d',{willReadFrequently:true});
 let zoom=1,tiltS=0,tbox=null,box=null,aiBox=null,alpha=0,cm=0,label='',tip='',state='search',alignedAt=0,readyAt=0,wasOk=false,
     prev=null,pgrid=null,curPk=-1,useAI=false,aiBusy=false,lastAi=0,aiGap=5000,started=false,auto=false,lastShot=0,
-    TX=1/3,TY=1/3,sx=null,sy=null,pend='',pc=0,lightKey='',lcand='',lcn=0,tLast=0,last=0,shots=[],hintTxt='';
+    TX=.5,TY=.5,jump=0,enh=true,E={e:1,c:1,s:1.1,g:[1,1,1]},pend='',pc=0,lightKey='',lcand='',lcn=0,tLast=0,last=0,shots=[],hintTxt='';
 const PROMPT='You are a photography coach looking at a live camera frame. Pick the single best subject for a striking photo (light, lines, symmetry, colour). Reply with ONLY JSON: {"label":"2-4 words","box":[x,y,w,h],"tip":"max 6 words"}. box is normalized 0-1, top-left origin.';
 const LT={dim:'🌙 Dim light',harsh:'😎 Harsh light',golden:'🌇 Golden light',soft:'☁️ Soft light'};
 const standalone=navigator.standalone===true;
 if(!standalone)$('tipi').textContent='Tip: Share → Add to Home Screen for full screen';
 
-function vr(){const vw=v.videoWidth,vh=v.videoHeight;let sw=vw,sh=vh;
-  if(vw/vh>.75)sw=vh*.75;else sh=vw/.75;sw/=zoom;sh/=zoom;return[(vw-sw)/2,(vh-sh)/2,sw,sh]}
+function vr(){const vw=v.videoWidth,vh=v.videoHeight,A=ov.clientWidth/ov.clientHeight||.75;let sw=vw,sh=vh;
+  if(vw/vh>A)sw=vh*A;else sh=vw/A;sw/=zoom;sh/=zoom;return[(vw-sw)/2,(vh-sh)/2,sw,sh]}
 function toast(m,ms=2200){const t=$('toast');t.textContent=m;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity=0,ms)}
-function info(m){$('info').textContent=m}
+function info(m){toast(m,3000)}
 
 $('start').onclick=async()=>{
   try{
     if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){try{await DeviceOrientationEvent.requestPermission()}catch(e){}}
     addEventListener('deviceorientation',e=>{if(e.gamma!=null)tiltS+=(e.gamma-tiltS)*.2});
     const s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1440}}});
-    v.srcObject=s;await v.play();$('welcome').style.display='none';started=true;$('pill').textContent='Looking for a great shot…';
+    v.srcObject=s;await v.play();nativeAuto(s);$('welcome').style.display='none';started=true;$('pill').textContent='Looking for a great shot…';
     requestAnimationFrame(draw);keepAwake();
   }catch(e){$('welcome').querySelector('p').textContent='Camera blocked. In Safari tap aA → Website Settings → Camera → Allow, then reload.'}
 };
@@ -107,8 +105,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&started){
 document.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>setZoom(+b.dataset.z));
 function setZoom(z){zoom=z;v.style.transform='scale('+z+')';aiBox=null;tbox=null;pgrid=null;curPk=-1;
   document.querySelectorAll('[data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===z))}
-$('auto').onclick=()=>{auto=!auto;$('auto').classList.toggle('on',auto);$('auto').textContent='⚡ Auto-shoot: '+(auto?'on':'off');
-  if(auto)toast('Shoots itself when everything is green')};
+$('auto').onclick=()=>{auto=!auto;$('auto').classList.toggle('on',auto);toast(auto?'⚡ Auto-shoot on: fires when everything is green':'Auto-shoot off')};
+$('enh').onclick=()=>{enh=!enh;$('enh').classList.toggle('on',enh);if(!enh)v.style.filter='none';toast(enh?'🌓 Auto-enhance on':'Auto-enhance off')};
+function nativeAuto(st){try{const tr=st.getVideoTracks()[0],c=tr.getCapabilities?tr.getCapabilities():{},a={};
+  for(const k of['focusMode','exposureMode','whiteBalanceMode'])if(c[k]&&c[k].includes('continuous'))a[k]='continuous';
+  if(Object.keys(a).length)tr.applyConstraints({advanced:[a]}).catch(()=>{})}catch(e){}}
 
 /* ---- AI providers ---- */
 const DEF={gemini:{model:'gemini-flash-lite-latest',url:'',hint:'Free key at aistudio.google.com'},anthropic:{model:'claude-haiku-5-5',url:'',hint:'Key from console.anthropic.com (paid per use)'},openai:{model:'gpt-4o-mini',url:'https://api.openai.com/v1',hint:'Any OpenAI-style endpoint: OpenRouter https://openrouter.ai/api/v1, Groq https://api.groq.com/openai/v1… Pick a model that accepts images.'}};
@@ -146,8 +147,8 @@ async function callAI(c,b64){
 async function askAI(){
   const c=active();if(aiBusy||!useAI||!c)return;aiBusy=true;
   try{
-    const cv=document.createElement('canvas');cv.width=384;cv.height=512;const[a,b,w,h]=vr();
-    cv.getContext('2d').drawImage(v,a,b,w,h,0,0,384,512);
+    const cv=document.createElement('canvas'),A=ov.clientWidth/ov.clientHeight||.75;cv.width=384;cv.height=Math.round(384/A);const[a,b,w,h]=vr();
+    cv.getContext('2d').drawImage(v,a,b,w,h,0,0,cv.width,cv.height);
     const txt=await callAI(c,cv.toDataURL('image/jpeg',.7).split(',')[1]);
     const j=JSON.parse(txt.match(/\{[\s\S]*\}/)[0]);
     if(!Array.isArray(j.box)||j.box.length!==4)throw new SyntaxError('bad box');
@@ -168,19 +169,17 @@ async function askAI(){
 
 /* ---- detection ---- */
 function analyse(d){
-  const n=W*H,g=new Float32Array(n);let mr=0,mg=0,mb=0,lum=0,clip=0;
-  for(let i=0;i<n;i++){const r=d[i*4],gg=d[i*4+1],b=d[i*4+2];g[i]=.299*r+.587*gg+.114*b;mr+=r;mg+=gg;mb+=b;lum+=g[i];if(g[i]>245)clip++}
-  mr/=n;mg/=n;mb/=n;lum/=n;
+  const n=W*H,g=new Float32Array(n);let mr=0,mg=0,mb=0,lum=0,clip=0,sat=0;
+  for(let i=0;i<n;i++){const r=d[i*4],gg=d[i*4+1],b=d[i*4+2];g[i]=.299*r+.587*gg+.114*b;mr+=r;mg+=gg;mb+=b;lum+=g[i];if(g[i]>245)clip++;sat+=(Math.max(r,gg,b)-Math.min(r,gg,b))/(Math.max(r,gg,b)+1)}
+  mr/=n;mg/=n;mb/=n;lum/=n;sat/=n;
   const grid=new Float32Array(GW*GH),bw=W/GW,bh=H/GH;
   for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;
     const cd=Math.abs(d[i*4]-mr)+Math.abs(d[i*4+1]-mg)+Math.abs(d[i*4+2]-mb);
     const c=Math.abs(g[i]*4-g[i-1]-g[i+1]-g[i-W]-g[i+W]);
     const k=1-.6*Math.hypot(x/W-.5,y/H-.5);
     grid[Math.floor(y/bh)*GW+Math.floor(x/bw)]+=(cd*.6+c*1.2+g[i]*.2)*k}
-  if(!pgrid)pgrid=grid;else for(let i=0;i<grid.length;i++)pgrid[i]=pgrid[i]*.6+grid[i]*.4; // temporal smoothing
+  if(!pgrid)pgrid=grid;else for(let i=0;i<grid.length;i++)pgrid[i]=pgrid[i]*.3+grid[i]*.7; // temporal smoothing
   let pk=0,pi=0;pgrid.forEach((s,i)=>{if(s>pk){pk=s;pi=i}});
-  if(curPk>=0&&pgrid[curPk]*1.35>pk){pi=curPk;pk=pgrid[curPk]} // hysteresis: stick with current subject
-  curPk=pi;
   const seen=new Set([pi]),st=[pi];let x0=GW,x1=0,y0=GH,y1=0;
   while(st.length){const i=st.pop(),x=i%GW,y=(i/GW)|0;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);
     [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{const nx=x+a,ny=y+b,j=ny*GW+nx;
@@ -188,30 +187,49 @@ function analyse(d){
   if(x1-x0<1){x0=Math.max(0,x0-1);x1=Math.min(GW-1,x1+1)}
   if(y1-y0<1){y0=Math.max(0,y0-1);y1=Math.min(GH-1,y1+1)}
   const warm=mr/(mb+1),k=lum<60?'dim':clip/n>.08?'harsh':(warm>1.15&&lum>90)?'golden':'soft';
-  return{rect:{x:x0/GW,y:y0/GH,w:(x1-x0+1)/GW,h:(y1-y0+1)/GH},gray:g,light:k};
+  const hist=new Uint16Array(256);for(let i=0;i<n;i++)hist[g[i]|0]++;let cum=0,p2=-1,p98=255;
+  for(let i=0;i<256;i++){cum+=hist[i];if(p2<0&&cum>n*.02)p2=i;if(cum>n*.98){p98=i;break}}
+  return{rect:{x:x0/GW,y:y0/GH,w:(x1-x0+1)/GW,h:(y1-y0+1)/GH},gray:g,light:k,st:{lum,sat,p2:Math.max(0,p2),p98,mr,mg,mb}};
 }
-function track(g){
-  if(!prev||!aiBox)return;
-  const gx=Math.round(aiBox.x*W),gy=Math.round(aiBox.y*H),gw=Math.max(4,Math.round(aiBox.w*W)),gh=Math.max(4,Math.round(aiBox.h*H));
+function track(g,b){
+  if(!prev||!b)return;
+  const gx=Math.round(b.x*W),gy=Math.round(b.y*H),gw=Math.max(4,Math.round(b.w*W)),gh=Math.max(4,Math.round(b.h*H));
   let best=1e18,bx=0,by=0;
-  for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){let s=0,c=0;
+  for(let dy=-6;dy<=6;dy++)for(let dx=-6;dx<=6;dx++){let s=0,c=0;
     for(let y=0;y<gh;y+=2)for(let x=0;x<gw;x+=2){const px=gx+x,py=gy+y,qx=px+dx,qy=py+dy;
       if(px<0||py<0||px>=W||py>=H||qx<0||qy<0||qx>=W||qy>=H)continue;
       s+=Math.abs(prev[py*W+px]-g[qy*W+qx]);c++}
-    if(c>20){s=s/c+(Math.abs(dx)+Math.abs(dy))*.4;if(s<best){best=s;bx=dx;by=dy}}} // small bias toward staying put
-  aiBox.x=Math.min(1-aiBox.w,Math.max(0,aiBox.x+bx/W));aiBox.y=Math.min(1-aiBox.h,Math.max(0,aiBox.y+by/H));
+    if(c>20){s=s/c+(Math.abs(dx)+Math.abs(dy))*.3;if(s<best){best=s;bx=dx;by=dy}}}
+  b.x=Math.min(1-b.w,Math.max(0,b.x+bx/W));b.y=Math.min(1-b.h,Math.max(0,b.y+by/H));
+}
+function setTarget(raw,strong){ // the stable box follows the subject, detection only nudges it
+  if(!tbox){tbox={...raw};return}
+  const d=Math.hypot(raw.x+raw.w/2-tbox.x-tbox.w/2,raw.y+raw.h/2-tbox.y-tbox.h/2);
+  if(d<.2){const a=strong?.6:.3;for(const p of['x','y','w','h'])tbox[p]+=(raw[p]-tbox[p])*a;jump=0}
+  else if(strong||++jump>=3){tbox={...raw};jump=0}
+}
+function updateEnh(st){
+  const cl=(x,a,b)=>Math.min(b,Math.max(a,x)),avg=(st.mr+st.mg+st.mb)/3,
+  T={e:cl(1+(118/Math.max(st.lum,20)-1)*.6,.8,1.35),c:cl(1+(205-(st.p98-st.p2))/500,.95,1.22),s:st.sat<.2?1.25:1.12,
+     g:[st.mr,st.mg,st.mb].map(m=>cl(1+(avg/Math.max(m,1)-1)*.5,.92,1.08))};
+  E.e+=(T.e-E.e)*.12;E.c+=(T.c-E.c)*.12;E.s+=(T.s-E.s)*.12;for(let i=0;i<3;i++)E.g[i]+=(T.g[i]-E.g[i])*.12;
+  if(enh)v.style.filter='brightness('+E.e.toFixed(3)+') contrast('+E.c.toFixed(3)+') saturate('+E.s.toFixed(3)+')';
+}
+function applyEnh(c){
+  const x=c.getContext('2d'),im=x.getImageData(0,0,c.width,c.height),d=im.data;
+  const L=[0,1,2].map(ch=>{const t=new Uint8ClampedArray(256);for(let i=0;i<256;i++)t[i]=((i*E.e*E.g[ch])-128)*E.c+128;return t}),s=E.s;
+  for(let i=0;i<d.length;i+=4){const r=L[0][d[i]],g=L[1][d[i+1]],b=L[2][d[i+2]],l=.299*r+.587*g+.114*b;
+    d[i]=l+(r-l)*s;d[i+1]=l+(g-l)*s;d[i+2]=l+(b-l)*s}
+  x.putImageData(im,0,0);
 }
 function setHint(h,force){ // debounce so the text doesn’t flicker
   if(h===pend)pc++;else{pend=h;pc=1}
   if(pc>=2||force){hintTxt=h;$('pill').textContent=h}
 }
-function coach(raw){
-  if(!raw){tbox=null;state='search';wasOk=false;setHint('Looking for a great shot…');return}
-  if(!tbox||Math.abs(raw.x-tbox.x)>.012||Math.abs(raw.y-tbox.y)>.012||Math.abs(raw.w-tbox.w)>.02||Math.abs(raw.h-tbox.h)>.02)tbox={...raw};
+function coach(){
+  if(!tbox){state='search';wasOk=false;setHint('Looking for a great shot…');return}
   const mx=tbox.x+tbox.w/2,my=tbox.y+tbox.h/2;
-  let a=mx<.5?0:1,b=my<.5?0:1;
-  if(sx!=null&&Math.abs(mx-.5)<.07)a=sx;if(sy!=null&&Math.abs(my-.5)<.07)b=sy; // keep the same target point near the middle
-  sx=a;sy=b;TX=a?2/3:1/3;TY=b?2/3:1/3;
+  TX=.5;TY=.5;
   const dx=TX-mx,dy=TY-my,thr=wasOk?.08:.05,ok=Math.abs(dx)<thr&&Math.abs(dy)<thr,p=[];
   if(Math.abs(dx)>=thr)p.push(dx>0?'left':'right');
   if(Math.abs(dy)>=thr)p.push(dy>0?'up':'down');
@@ -228,9 +246,11 @@ function coach(raw){
 }
 function tick(){
   wx.drawImage(v,...vr(),0,0,W,H);const r=analyse(wx.getImageData(0,0,W,H).data);
-  if(useAI&&aiBox){track(r.gray);if(Date.now()-lastAi>aiGap)askAI();coach(aiBox)}
-  else{if(useAI&&Date.now()-lastAi>aiGap)askAI();label=useAI?'':'best subject';coach(r.rect)}
-  prev=r.gray;
+  if(tbox)track(r.gray,tbox);
+  if(useAI){if(Date.now()-lastAi>aiGap)askAI();
+    if(aiBox){track(r.gray,aiBox);setTarget(aiBox,true)}else{label='';setTarget(r.rect,false)}}
+  else{label='best subject';setTarget(r.rect,false)}
+  coach();updateEnh(r.st);prev=r.gray;
   if(r.light===lcand)lcn++;else{lcand=r.light;lcn=1}
   if(lcn>=4&&lightKey!==lcand){lightKey=lcand;const lp=$('lightpill');lp.textContent=LT[lightKey];lp.style.display='block'}
 }
@@ -250,15 +270,18 @@ function draw(t){
   const col='rgb('+Math.round(255+(48-255)*cm)+','+Math.round(214+(209-214)*cm)+','+Math.round(10+(88-10)*cm)+')';
   cx.strokeStyle='rgba(255,255,255,.18)';cx.lineWidth=.5;cx.beginPath();
   for(let i=1;i<3;i++){cx.moveTo(w*i/3,0);cx.lineTo(w*i/3,h);cx.moveTo(0,h*i/3);cx.lineTo(w,h*i/3)}cx.stroke();
+  if(alpha<.9){cx.strokeStyle='rgba(255,255,255,'+(.45*(1-alpha)).toFixed(2)+')';cx.lineWidth=1.5;cx.beginPath();cx.arc(w/2,h/2,14,0,7);cx.stroke()}
   if(box&&alpha>.02){
     cx.globalAlpha=alpha;
     const bx=box.x*w,by=box.y*h,bw=box.w*w,bh=box.h*h,mx=bx+bw/2,my=by+bh/2,tx=TX*w,ty=TY*h;
     cx.strokeStyle=col;cx.fillStyle=col;cx.lineCap='round';cx.lineJoin='round';
-    cx.lineWidth=2;cx.setLineDash(good?[]:[4,5]);cx.beginPath();cx.arc(tx,ty,15,0,7);cx.stroke();cx.setLineDash([]);
-    const dist=Math.hypot(tx-mx,ty-my);
-    if(!good&&dist>34){const an=Math.atan2(ty-my,tx-mx),sx0=mx+Math.cos(an)*18,sy0=my+Math.sin(an)*18,ex=tx-Math.cos(an)*20,ey=ty-Math.sin(an)*20;
-      cx.globalAlpha=alpha*.85;cx.lineWidth=3;cx.beginPath();cx.moveTo(sx0,sy0);cx.lineTo(ex,ey);cx.stroke();
-      cx.beginPath();cx.moveTo(ex,ey);cx.lineTo(ex-Math.cos(an-.5)*12,ey-Math.sin(an-.5)*12);cx.moveTo(ex,ey);cx.lineTo(ex-Math.cos(an+.5)*12,ey-Math.sin(an+.5)*12);cx.stroke();cx.globalAlpha=alpha}
+    const R=Math.max(9,Math.min(15,Math.min(bw,bh)*.12)),dist=Math.hypot(tx-mx,ty-my);
+    cx.lineWidth=2;cx.setLineDash(good?[]:[4,5]);cx.beginPath();cx.arc(tx,ty,14,0,7);cx.stroke();cx.setLineDash([]); // fixed aim point = screen centre
+    if(!good&&dist>R+22){const an=Math.atan2(ty-my,tx-mx),ax=mx+Math.cos(an)*(R+3),ay=my+Math.sin(an)*(R+3),ex=tx-Math.cos(an)*18,ey=ty-Math.sin(an)*18;
+      cx.globalAlpha=alpha*.85;cx.lineWidth=2.5;cx.beginPath();cx.moveTo(ax,ay);cx.lineTo(ex,ey);cx.stroke();
+      cx.beginPath();cx.moveTo(ex,ey);cx.lineTo(ex-Math.cos(an-.5)*10,ey-Math.sin(an-.5)*10);cx.moveTo(ex,ey);cx.lineTo(ex-Math.cos(an+.5)*10,ey-Math.sin(an+.5)*10);cx.stroke();cx.globalAlpha=alpha}
+    cx.lineWidth=3;cx.beginPath();cx.arc(mx,my,R,0,7);cx.stroke(); // circle stays on the subject
+    cx.beginPath();cx.arc(mx,my,2.5,0,7);cx.fill();
     const L=Math.max(14,Math.min(34,Math.min(bw,bh)*.22));cx.lineWidth=4;cx.beginPath();
     [[bx,by,1,1],[bx+bw,by,-1,1],[bx,by+bh,1,-1],[bx+bw,by+bh,-1,-1]].forEach(([x,y,a,b])=>{cx.moveTo(x+a*L,y);cx.lineTo(x,y);cx.lineTo(x,y+b*L)});cx.stroke();
     if(label){cx.font='600 13px -apple-system,sans-serif';const tw=cx.measureText(label).width+16,ly=Math.min(by+bh+8,h-70);
@@ -269,13 +292,13 @@ function draw(t){
   if(Math.abs(tiltS)<35){const lv=Math.abs(tiltS)<1.5;
     cx.strokeStyle='rgba(255,255,255,.5)';cx.lineWidth=2;cx.beginPath();cx.moveTo(w/2-92,h/2);cx.lineTo(w/2-78,h/2);cx.moveTo(w/2+78,h/2);cx.lineTo(w/2+92,h/2);cx.stroke();
     cx.save();cx.translate(w/2,h/2);cx.rotate(-tiltS*Math.PI/180);cx.strokeStyle=lv?'#30d158':'#ffd60a';cx.lineWidth=lv?3:2;
-    cx.beginPath();cx.moveTo(-70,0);cx.lineTo(70,0);cx.stroke();cx.restore()}
+    cx.beginPath();cx.moveTo(-72,0);cx.lineTo(-22,0);cx.moveTo(22,0);cx.lineTo(72,0);cx.stroke();cx.restore()}
 }
 
 /* ---- capture + tray ---- */
 async function capture(manual){
   if(!started)return;lastShot=Date.now();
-  const c=document.createElement('canvas');c.width=1440;c.height=1920;c.getContext('2d').drawImage(v,...vr(),0,0,1440,1920);
+  const c=document.createElement('canvas'),A=ov.clientWidth/ov.clientHeight||.75;c.width=1440;c.height=Math.round(1440/A);c.getContext('2d').drawImage(v,...vr(),0,0,c.width,c.height);if(enh)applyEnh(c);
   const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.92));
   shots.unshift({blob,url:URL.createObjectURL(blob)});if(shots.length>12)URL.revokeObjectURL(shots.pop().url);
   const f=$('flash');f.style.transition='none';f.style.opacity=.85;requestAnimationFrame(()=>{f.style.transition='opacity .35s';f.style.opacity=0});

@@ -1,0 +1,11 @@
+{
+  "name": "SkyeeCam",
+  "short_name": "SkyeeCam",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [{ "src": "icon.png", "sizes": "any", "type": "image/png" }]
+}
